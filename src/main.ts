@@ -21,15 +21,17 @@ async function bootstrap() {
 
   if (process.env.ENABLE_SWAGGER !== '0') {
     const config = new DocumentBuilder()
-      .setTitle('Specify your title here')
-      .setDescription('Specify your description here..')
+      .setTitle('경기고 이공연 선발 시스템')
+      .setDescription(
+        '경기고등학교 이공연 선발 시스템을 위한 백엔드 RestAPI 입니다.',
+      )
       .setVersion(version)
       .build()
 
     const document = SwaggerModule.createDocument(app, config)
 
     SwaggerModule.setup('docs', app, document)
-    await NestjsRedoxModule.setup('redoc', app, document, {
+    NestjsRedoxModule.setup('redoc', app, document, {
       standalone: true,
     })
   }
@@ -50,9 +52,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor())
 
   if (process.env.NODE_ENV === 'development') {
-    await app.listen(3000)
+    await app.listen(4000)
   } else {
-    await app.listen(3000, '0.0.0.0')
+    await app.listen(4000, '0.0.0.0')
   }
 }
 
