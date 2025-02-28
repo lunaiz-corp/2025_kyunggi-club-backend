@@ -1,15 +1,46 @@
 version: '3.8'
 
 services:
+  postgresql:
+    image: postgres:17.4-alpine
+    ports:
+      - 5432:5432
+    env_file:
+      - postgresql.env
+    environment:
+      TZ: Asia/Seoul
+      PGDATA: /data/postgres
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres']
+    volumes:
+      - ./postgres/data:/data/postgres
+    restart: unless-stopped
+
   redis:
     image: redis:7.4-alpine
     ports:
       - 6379:6379
-    command: redis-server /usr/local/etc/redis/redis.conf
-    volumes:
-      - ./redis/data:/data
-      - ./redis/conf/redis.conf:/usr/local/etc/redis/redis.conf
+    env_file:
+      - redis.env
+    command: /bin/sh -c "redis-server --requirepass $$PASSWORD --include /usr/local/etc/redis/redis.conf"
     labels:
       - 'name=redis'
       - 'mode=standalone'
-    restart: always
+    volumes:
+      - ./redis/data:/data
+      - ./redis/conf/redis.conf:/usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/lunaiz-corp/2025_kyunggi-club-backend:latest
+    ports:
+      - 4000:4000
+    env_file:
+      - backend.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_started
+    restart: unless-stopped
