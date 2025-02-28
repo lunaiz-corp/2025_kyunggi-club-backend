@@ -5,6 +5,13 @@ import { CacheModule } from '@nestjs/cache-manager'
 import KeyvRedis from '@keyv/redis'
 
 import { AppController } from './app.controller'
+import { ClubModule } from './club/club.module'
+import { ApplyModule } from './apply/apply.module'
+import { ScheduleModule } from './schedule/schedule.module'
+import { CdnModule } from './cdn/cdn.module'
+import { NoticeModule } from './notice/notice.module'
+import { StatusModule } from './status/status.module'
+import { AdvertisementModule } from './advertisement/advertisement.module'
 
 @Module({
   imports: [
@@ -24,6 +31,13 @@ import { AppController } from './app.controller'
           isGlobal: true,
         }),
     AppModule,
+    ClubModule,
+    ApplyModule,
+    ScheduleModule,
+    CdnModule,
+    NoticeModule,
+    StatusModule,
+    AdvertisementModule,
   ],
   controllers: [AppController],
 })
