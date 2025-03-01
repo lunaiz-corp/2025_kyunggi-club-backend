@@ -23,26 +23,26 @@ export class StatusService {
     private readonly statusRepository: Repository<StatusEntity>,
   ) {}
 
-  async retrieveServiceStatus(): Promise<ServiceStatus> {
-    const cachedStatus = await this.cacheManager.get<ServiceStatus>('status')
+  async retrieveServiceStatus(): Promise<StatusEntity> {
+    const cachedStatus = await this.cacheManager.get<StatusEntity>('status')
 
     if (cachedStatus) {
       return cachedStatus
     }
 
-    let { status } = await this.statusRepository.findOne({})
+    let status = await this.statusRepository.findOne({})
 
     if (!status) {
       await this.statusRepository.save({ status: ServiceStatus.OPEN })
-      status = ServiceStatus.OPEN
+      status = await this.statusRepository.findOne({})
     }
 
     await this.cacheManager.set('status', status, 1800 * 1000)
     return status
   }
 
-  async updateServiceStatus(status: ServiceStatus): Promise<UpdateResult> {
+  async updateServiceStatus(data: StatusEntity): Promise<UpdateResult> {
     await this.cacheManager.del('status')
-    return this.statusRepository.update({}, { status })
+    return this.statusRepository.update({}, { status: data.status })
   }
 }
