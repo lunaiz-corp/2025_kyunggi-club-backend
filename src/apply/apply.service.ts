@@ -36,11 +36,11 @@ export class ApplyService {
 
     const orderIdRegex = /^KGH\d{14}@\w{10}$/
     if (!orderId || !orderIdRegex.test(orderId)) {
-      throw new APIException(400, '잘못된 orderId 형식입니다.')
+      throw new APIException(400, "올바르지 않은 'orderId' 형식입니다.")
     }
 
     if (!device || !['pc', 'android', 'ios'].includes(device)) {
-      throw new APIException(400, '잘못된 device 형식입니다.')
+      throw new APIException(400, "올바르지 않은 'device' 형식입니다.")
     }
 
     const ctType = 'HAS'
