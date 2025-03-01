@@ -10,7 +10,7 @@ import {
   Query,
   Res,
 } from '@nestjs/common'
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import PassHashResponseDto from './dto/PassHashResponse.dto'
 import PassCallbackRequestDto from './dto/PassCallbackRequest.dto'
@@ -100,9 +100,6 @@ export class ApplyController {
   @ApiOperation({
     summary: 'PASS 본인인증 해시값 생성',
     description: 'PASS 본인인증 요청을 위한 해시값을 생성합니다.',
-  })
-  @ApiOkResponse({
-    type: PassHashResponseDto,
   })
   async getPassHashData(
     @Query('orderId') orderId: string,

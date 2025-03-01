@@ -1,5 +1,5 @@
 import { Controller, Get, Logger, Param, Query } from '@nestjs/common'
-import { ApiOkResponse, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 
 import { CdnService } from './cdn.service'
 
@@ -21,9 +21,6 @@ export class CdnController {
     name: 'keyPrefix',
     required: false,
     type: String,
-  })
-  @ApiOkResponse({
-    type: PresignedUrlResponseDto,
   })
   async createPresignedUrl(
     @Param('type') type: 'apply' | 'notice',

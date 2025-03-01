@@ -6,9 +6,14 @@ import { Cache } from 'cache-manager'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, UpdateResult, DeleteResult } from 'typeorm'
 
-import { ScheduleEntity } from 'src/common/repository/entity/schedule.entity'
+import {
+  ScheduleEntity,
+  OperationScheduleEntity,
+} from 'src/common/repository/entity/schedule.entity'
 
-import ScheduleMutateRequestDto from './dto/ScheduleMutateRequest.dto'
+import ScheduleMutateRequestDto, {
+  OperationScheduleMutateRequestDto,
+} from './dto/ScheduleMutateRequest.dto'
 
 @Injectable()
 export class ScheduleService {
@@ -20,6 +25,9 @@ export class ScheduleService {
 
     @InjectRepository(ScheduleEntity)
     private readonly scheduleRepository: Repository<ScheduleEntity>,
+
+    @InjectRepository(OperationScheduleEntity)
+    private readonly operationScheduleRepository: Repository<OperationScheduleEntity>,
   ) {}
 
   async retrieveSchedulesList(): Promise<ScheduleEntity[]> {
@@ -37,22 +45,49 @@ export class ScheduleService {
   }
 
   async createSchedule(
-    data: ScheduleMutateRequestDto,
-  ): Promise<ScheduleEntity> {
+    data: ScheduleMutateRequestDto | OperationScheduleMutateRequestDto,
+  ): Promise<ScheduleEntity | OperationScheduleEntity> {
     await this.cacheManager.del('schedule')
-    return this.scheduleRepository.save(data)
+
+    if (data instanceof OperationScheduleMutateRequestDto) {
+      return this.operationScheduleRepository.save(data)
+    }
+
+    return this.scheduleRepository.save({
+      ...data,
+      club: { id: data.club },
+    })
   }
 
   async updateSchedule(
     id: string,
-    data: ScheduleMutateRequestDto,
+    data: ScheduleMutateRequestDto | OperationScheduleMutateRequestDto,
   ): Promise<UpdateResult> {
     await this.cacheManager.del('schedule')
-    return this.scheduleRepository.update(id, data)
+
+    if (data instanceof OperationScheduleMutateRequestDto) {
+      return this.operationScheduleRepository.update(id, data)
+    }
+
+    return this.scheduleRepository.update(id, {
+      ...data,
+      club: { id: data.club },
+    })
   }
 
   async deleteSchedule(id: string): Promise<DeleteResult> {
     await this.cacheManager.del('schedule')
-    return this.scheduleRepository.delete(id)
+
+    const schedule = await this.scheduleRepository.findOne({ where: { id } })
+    if (schedule) {
+      return this.scheduleRepository.delete(id)
+    }
+
+    const operationSchedule = await this.operationScheduleRepository.findOne({
+      where: { id },
+    })
+    if (operationSchedule) {
+      return this.operationScheduleRepository.delete(id)
+    }
   }
 }
