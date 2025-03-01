@@ -36,6 +36,9 @@ lerna-debug.log*
 
 *.env*
 !.env.example
+!*.env.example
 
 credentials/kcp/*
 !credentials/kcp/.gitkeep
+
+.docker/

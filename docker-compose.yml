@@ -6,14 +6,14 @@ services:
     ports:
       - 5432:5432
     env_file:
-      - postgresql.env
+      - postgres.env
     environment:
       TZ: Asia/Seoul
       PGDATA: /data/postgres
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'postgres']
     volumes:
-      - ./postgres/data:/data/postgres
+      - ./.docker/postgres/data:/data/postgres
     restart: unless-stopped
 
   # redis:

@@ -12,8 +12,8 @@ import { version } from '../package.json'
 
 import metadata from './metadata'
 
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
-import { TransformInterceptor } from './common/interceptors/transform.interceptor'
+import { GlobalExceptionFilter } from './common/filter/global-exception.filter'
+import { TransformInterceptor } from './common/interceptor/transform.interceptor'
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
