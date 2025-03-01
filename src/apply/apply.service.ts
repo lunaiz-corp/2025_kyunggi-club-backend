@@ -2,15 +2,31 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 
+import { InjectRepository } from '@nestjs/typeorm'
+import { Repository } from 'typeorm'
+
 import fs from 'node:fs'
 import crypto from 'node:crypto'
 
 import { firstValueFrom } from 'rxjs'
 import { Cache } from 'cache-manager'
 
+import {
+  StudentEntity,
+  ParentEntity,
+  FormRawAnswerEntity,
+  FormAnswerEntity,
+  ApplyEntity,
+  ApplyStatusEntity,
+  CurrentStatus,
+} from 'src/common/repository/entity/apply.entity'
+
 import APIException from 'src/common/dto/APIException.dto'
 import PassHashResponseDto from './dto/PassHashResponse.dto'
 import PassCallbackResponseDto from './dto/PassCallbackResponse.dto'
+
+import SubmitApplicationRequestDto from './dto/SubmitApplicationRequest.dto'
+import ApplicationStatusMutateRequestDto from './dto/ApplicationStatusMutateRequest.dto'
 
 @Injectable()
 export class ApplyService {
@@ -19,8 +35,180 @@ export class ApplyService {
   constructor(
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
+
+    @InjectRepository(StudentEntity)
+    private readonly studentRepository: Repository<StudentEntity>,
+
+    @InjectRepository(ParentEntity)
+    private readonly parentRepository: Repository<ParentEntity>,
+
+    @InjectRepository(FormRawAnswerEntity)
+    private readonly formRawAnswerRepository: Repository<FormRawAnswerEntity>,
+
+    @InjectRepository(FormAnswerEntity)
+    private readonly formAnswerRepository: Repository<FormAnswerEntity>,
+
+    @InjectRepository(ApplyStatusEntity)
+    private readonly applyStatusRepository: Repository<ApplyStatusEntity>,
+
+    @InjectRepository(ApplyEntity)
+    private readonly applyRepository: Repository<ApplyEntity>,
+
     private readonly httpService: HttpService,
   ) {}
+
+  async createApplication(data: SubmitApplicationRequestDto) {
+    const { userInfo, parentInfo, formAnswers } = data
+
+    const passData = userInfo.verifiedRefId
+      ? await this.cacheManager.get<any>(
+          `pass-decrypted:${userInfo.verifiedRefId}`,
+        )
+      : undefined
+    const parentPassData = parentInfo.verifiedRefId
+      ? await this.cacheManager.get<any>(
+          `pass-decrypted:${parentInfo.verifiedRefId}`,
+        )
+      : undefined
+
+    const alreadyApplied = await this.applyRepository.findOne({
+      where: { student: { id: userInfo.id } },
+    })
+
+    if (alreadyApplied) {
+      throw new APIException(409, '이미 지원한 학생입니다.')
+    }
+
+    await this.studentRepository.insert({
+      id: userInfo.id,
+      name: userInfo.name,
+      phone: userInfo.phone,
+      ci: passData ? (passData.ci_url as string) : undefined,
+      di: passData ? (passData.di_url as string) : undefined,
+    })
+
+    await this.parentRepository.insert({
+      name: parentInfo.name,
+      phone: parentInfo.phone,
+      relationship: parentInfo.relationship,
+      ci: parentPassData ? (parentPassData.ci_url as string) : undefined,
+      di: parentPassData ? (parentPassData.di_url as string) : undefined,
+    })
+
+    formAnswers.forEach(async (answers) => {
+      answers.answers.forEach(async (answer) => {
+        await this.formRawAnswerRepository.insert({
+          id: `${userInfo.id}-${answer.id}`,
+          answer: answer.answer,
+          files: answer.files,
+        })
+      })
+
+      await this.formAnswerRepository.insert({
+        id: `${userInfo.id}-${answers.club}`,
+        student: { id: userInfo.id },
+        club: { id: answers.club },
+        answers: answers.answers.map((answer) => ({
+          id: `${userInfo.id}-${answer.id}`,
+        })),
+      })
+
+      await this.applyStatusRepository.insert({
+        student: { id: userInfo.id },
+        club: { id: answers.club },
+        status: CurrentStatus.WAITING,
+      })
+    })
+
+    await this.applyRepository.insert({
+      student: { id: userInfo.id },
+      parent: { phone: parentInfo.phone },
+      answers: formAnswers.map((answers) => ({
+        id: `${userInfo.id}-${answers.club}`,
+      })),
+    })
+  }
+
+  async retrieveApplicationsList(club: string) {
+    const applications = await this.applyRepository.find({
+      where: { answers: { club: { id: club } } },
+    })
+
+    return applications
+  }
+
+  async sendBulkNotification() {}
+
+  async retrieveApplicationStatus(id: number) {
+    const applications = await this.applyRepository.find({
+      where: { student: { id } },
+    })
+
+    return applications
+  }
+
+  async retrieveApplication(club: string, id: number) {
+    const application = await this.applyRepository.findOne({
+      where: {
+        student: { id },
+        answers: { club: { id: club } },
+      },
+    })
+
+    return application
+  }
+
+  async updateApplicationStatus(
+    club: string,
+    id: number,
+    data: ApplicationStatusMutateRequestDto,
+  ) {
+    const application = await this.applyRepository.findOne({
+      where: {
+        student: { id },
+        answers: { club: { id: club } },
+      },
+    })
+
+    if (!application) {
+      throw new APIException(404, '존재하지 않는 지원서입니다.')
+    }
+
+    await this.applyStatusRepository.update(
+      {
+        student: { id },
+        club: { id: club },
+      },
+      {
+        status: data.status,
+      },
+    )
+  }
+
+  async sendNotification(club: string, id: number) {}
+
+  async finalSubmit(club: string, id: number) {
+    const application = await this.applyRepository.findOne({
+      where: {
+        student: { id },
+        answers: { club: { id: club } },
+      },
+    })
+
+    if (!application) {
+      throw new APIException(404, '존재하지 않는 지원서입니다.')
+    }
+
+    await this.applyStatusRepository.update(
+      {
+        student: { id },
+        club: { id: club },
+      },
+      {
+        status: CurrentStatus.FINAL_SUBMISSION,
+      },
+    )
+  }
 
   async getPassHashData(
     orderId: string,
@@ -230,7 +418,8 @@ export class ApplyService {
       decryptedData,
     )
 
-    await this.cacheManager.get(`pass-hashdata:${orderId}`)
+    await this.cacheManager.del(`pass-hashdata:${orderId}`)
+    await this.cacheManager.set(`pass-decrypted:${orderId}`, decryptedData)
 
     return {
       res_cd: decryptedData.res_cd,

@@ -1,9 +1,9 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Logger,
+  Param,
   Patch,
   Post,
   Put,
@@ -11,6 +11,9 @@ import {
   Res,
 } from '@nestjs/common'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
+
+import SubmitApplicationRequestDto from './dto/SubmitApplicationRequest.dto'
+import ApplicationStatusMutateRequestDto from './dto/ApplicationStatusMutateRequest.dto'
 
 import PassHashResponseDto from './dto/PassHashResponse.dto'
 import PassCallbackRequestDto from './dto/PassCallbackRequest.dto'
@@ -29,17 +32,17 @@ export class ApplyController {
     summary: '지원서 제출',
     description: '실제 입력된 지원서를 업로드합니다.',
   })
-  async createApplication() {
-    return
+  async createApplication(@Body() body: SubmitApplicationRequestDto) {
+    return this.applyService.createApplication(body)
   }
 
-  @Get('')
+  @Get(':club')
   @ApiOperation({
     summary: '(ADMIN) 지원서 목록 조회',
     description: '지원서 목록을 조회합니다.',
   })
-  async retrieveApplicationsList() {
-    return
+  async retrieveApplicationsList(@Param('club') club: string) {
+    return this.applyService.retrieveApplicationsList(club)
   }
 
   @Post('notification')
@@ -48,52 +51,59 @@ export class ApplyController {
     description: '지원서에 대한 일괄 알림톡을 전송합니다.',
   })
   async sendBulkNotification() {
-    return
+    return this.applyService.sendBulkNotification()
   }
 
   @Get(':id')
   @ApiOperation({
-    summary: '지원서 조회',
+    summary: '지원서 상태 조회',
     description: '지원서를 조회합니다.',
   })
-  async retrieveApplication() {
-    return
+  async retrieveApplicationStatus(@Param('id') id: number) {
+    return this.applyService.retrieveApplicationStatus(id)
   }
 
-  @Patch(':id')
+  @Get(':club/:id')
+  @ApiOperation({
+    summary: '(ADMIN) 지원서 조회',
+    description: '지원서를 조회합니다.',
+  })
+  async retrieveApplication(
+    @Param('club') club: string,
+    @Param('id') id: number,
+  ) {
+    return this.applyService.retrieveApplication(club, id)
+  }
+
+  @Patch(':club/:id')
   @ApiOperation({
     summary: '(ADMIN) 지원서 상태 수정',
     description: '지원서를 상태를 수정합니다. (합격, 불합격...)',
   })
-  async updateApplicationStatus() {
-    return
+  async updateApplicationStatus(
+    @Param('club') club: string,
+    @Param('id') id: number,
+    @Body() body: ApplicationStatusMutateRequestDto,
+  ) {
+    return this.applyService.updateApplicationStatus(club, id, body)
   }
 
-  @Delete(':id')
-  @ApiOperation({
-    summary: '(SUPER ADMIN) 지원서 삭제',
-    description: '지원서를 삭제합니다.',
-  })
-  async deleteApplication() {
-    return
-  }
-
-  @Post(':id/notification')
+  @Post(':club/:id/notification')
   @ApiOperation({
     summary: '(ADMIN) 지원서 개별 알림톡 발송',
     description: '지원서에 대한 개별 알림톡을 전송합니다.',
   })
-  async sendNotification() {
-    return
+  async sendNotification(@Param('club') club: string, @Param('id') id: number) {
+    return this.applyService.sendNotification(club, id)
   }
 
-  @Put(':id/final-submit')
+  @Put(':club/:id/final-submit')
   @ApiOperation({
     summary: '최종 지원',
     description: '최종 선발 기간에서 최종 지원합니다.',
   })
-  async finalSubmit() {
-    return
+  async finalSubmit(@Param('club') club: string, @Param('id') id: number) {
+    return this.applyService.finalSubmit(club, id)
   }
 
   @Get('pass/encrypt')
