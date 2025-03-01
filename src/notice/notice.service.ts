@@ -24,13 +24,33 @@ export class NoticeService {
   ) {}
 
   async retrieveNoticesList(board: string): Promise<NoticeEntity[]> {
-    return this.noticeRepository.find({
+    const cachedNotices = await this.cacheManager.get<NoticeEntity[]>(
+      `notice:${board}`,
+    )
+
+    if (cachedNotices) {
+      return cachedNotices
+    }
+
+    const notices = await this.noticeRepository.find({
       where: { category: { id: board } },
+      select: { id: true, title: true, created_at: true },
       order: { created_at: 'DESC' },
     })
+    await this.cacheManager.set(`notice:${board}`, notices, 1800 * 1000)
+
+    return notices
   }
 
   async retrieveNotice(board: string, id: number): Promise<NoticeEntity> {
+    const cachedNotice = await this.cacheManager.get<NoticeEntity>(
+      `notice:${board}:${id}`,
+    )
+
+    if (cachedNotice) {
+      return cachedNotice
+    }
+
     const notice = await this.noticeRepository.findOne({
       where: { category: { id: board }, id },
     })
@@ -42,6 +62,7 @@ export class NoticeService {
       )
     }
 
+    await this.cacheManager.set(`notice:${board}:${id}`, notice, 1800 * 1000)
     return notice
   }
 
@@ -49,6 +70,7 @@ export class NoticeService {
     board: string,
     data: NoticeMutateRequestDto,
   ): Promise<NoticeEntity> {
+    await this.cacheManager.del(`notice:${board}`)
     return this.noticeRepository.save({
       category: { id: board },
       title: data.title,
@@ -62,6 +84,8 @@ export class NoticeService {
     id: number,
     data: NoticeMutateRequestDto,
   ): Promise<UpdateResult> {
+    await this.cacheManager.del(`notice:${board}`)
+    await this.cacheManager.del(`notice:${board}:${id}`)
     return this.noticeRepository.update(
       { category: { id: board }, id },
       {
@@ -73,6 +97,8 @@ export class NoticeService {
   }
 
   async deleteNotice(board: string, id: number): Promise<DeleteResult> {
+    await this.cacheManager.del(`notice:${board}`)
+    await this.cacheManager.del(`notice:${board}:${id}`)
     return this.noticeRepository.delete({ category: { id: board }, id })
   }
 }
