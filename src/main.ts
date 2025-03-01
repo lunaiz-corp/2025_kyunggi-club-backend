@@ -10,6 +10,8 @@ import {
 import { AppModule } from './app.module'
 import { version } from '../package.json'
 
+import metadata from './metadata'
+
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { TransformInterceptor } from './common/interceptors/transform.interceptor'
 
@@ -28,6 +30,7 @@ async function bootstrap() {
       .setVersion(version)
       .build()
 
+    await SwaggerModule.loadPluginMetadata(metadata)
     const document = SwaggerModule.createDocument(app, config)
 
     SwaggerModule.setup('docs', app, document)
@@ -51,11 +54,7 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter())
   app.useGlobalInterceptors(new TransformInterceptor())
 
-  if (process.env.NODE_ENV === 'development') {
-    await app.listen(4000)
-  } else {
-    await app.listen(4000, '0.0.0.0')
-  }
+  await app.listen(4000, '0.0.0.0')
 }
 
 bootstrap()

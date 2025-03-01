@@ -8,11 +8,12 @@ import {
   Post,
   Put,
   Query,
+  Res,
 } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
 
-import { IPassHashData, IPassVerifyResult } from 'src/common/types/pass'
-import PassVerifyRequestDto from './dto/PassVerifyRequest.dto'
+import PassHashResponseDto from './dto/PassHashResponse.dto'
+import PassCallbackRequestDto from './dto/PassCallbackRequest.dto'
 
 import { ApplyService } from './apply.service'
 
@@ -100,24 +101,54 @@ export class ApplyController {
     summary: 'PASS 본인인증 해시값 생성',
     description: 'PASS 본인인증 요청을 위한 해시값을 생성합니다.',
   })
+  @ApiOkResponse({
+    type: PassHashResponseDto,
+  })
   async getPassHashData(
     @Query('orderId') orderId: string,
-  ): Promise<IPassHashData> {
-    return this.applyService.getPassHashData(orderId)
+    @Query('device') device: 'pc' | 'android' | 'ios',
+  ): Promise<PassHashResponseDto> {
+    return this.applyService.getPassHashData(orderId, device)
   }
 
-  @Post('pass/decrypt')
+  @Post('pass/callback')
   @ApiOperation({
-    summary: 'PASS 본인인증 결과 확인',
-    description: 'PASS 본인인증 결과를 확인합니다.',
+    summary: 'PASS 본인인증 콜백 처리',
+    description: 'PASS 본인인증 콜백을 처리합니다.',
   })
-  async verifyPass(
-    @Body() body: PassVerifyRequestDto,
-  ): Promise<IPassVerifyResult> {
-    return await this.applyService.getPassVerifyResult(body.ordr_idxx, {
-      certNo: body.cert_no,
-      dnHash: body.dn_hash,
-      certData: body.enc_cert_data2,
-    })
+  async passCallback(@Res() res, @Body() body: PassCallbackRequestDto) {
+    const host =
+      process.env.NODE_ENV === 'development'
+        ? 'http://macbook:3000'
+        : 'https://kyunggi.club'
+
+    if (body.res_cd !== '0000') {
+      const encodedResponse = Buffer.from(
+        JSON.stringify({ res_cd: body.res_cd, res_msg: body.res_msg }),
+      ).toString('base64')
+
+      return res.redirect(
+        `${host}/apply/pass/callback?orderId=${body.ordr_idxx}&data=${encodedResponse}`,
+        302,
+      )
+    }
+
+    const response = await this.applyService.getPassVerifyResult(
+      body.ordr_idxx,
+      {
+        certNo: body.cert_no,
+        dnHash: body.dn_hash,
+        certData: body.enc_cert_data2,
+      },
+    )
+
+    const encodedResponse = Buffer.from(JSON.stringify(response)).toString(
+      'base64',
+    )
+
+    return res.redirect(
+      `${host}/apply/pass/callback?orderId=${body.ordr_idxx}&data=${encodedResponse}`,
+      302,
+    )
   }
 }
