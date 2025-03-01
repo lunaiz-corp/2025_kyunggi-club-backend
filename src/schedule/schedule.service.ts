@@ -44,14 +44,14 @@ export class ScheduleService {
   }
 
   async updateSchedule(
-    id: number,
+    id: string,
     data: ScheduleMutateRequestDto,
   ): Promise<UpdateResult> {
     await this.cacheManager.del('schedule')
     return this.scheduleRepository.update(id, data)
   }
 
-  async deleteSchedule(id: number): Promise<DeleteResult> {
+  async deleteSchedule(id: string): Promise<DeleteResult> {
     await this.cacheManager.del('schedule')
     return this.scheduleRepository.delete(id)
   }

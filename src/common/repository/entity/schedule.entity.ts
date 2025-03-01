@@ -17,11 +17,15 @@ export enum ScheduleCategory {
 
 @Entity({ name: 'schedule' })
 export class ScheduleEntity extends BaseEntity {
-  @ApiProperty({ type: String })
+  @ApiProperty({
+    type: String,
+    example: 'b1e7dea0-2060-4f0a-835a-a51636fa1926',
+  })
   @PrimaryGeneratedColumn('uuid')
   id: string
 
-  @ApiProperty({ type: () => ScheduleCategory })
+  @ApiProperty({ type: () => Object.values(ScheduleCategory) })
+  @Column({ type: 'text', enum: Object.values(ScheduleCategory) })
   category: ScheduleCategory
 
   @ApiProperty({ type: Date })
