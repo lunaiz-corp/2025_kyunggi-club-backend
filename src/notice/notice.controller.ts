@@ -13,7 +13,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger'
 import { NoticeEntity } from 'src/common/repository/entity/notice.entity'
 
 import { NoticeService } from './notice.service'
-import NoticeMutateRequestDto from './dto/NoticeMutateRequest.dto'
+import NoticeMutateRequestDto from './dto/request/notice-mutate.request.dto'
 
 @ApiTags('Notice - 공지사항 관리 API')
 @Controller('notice')

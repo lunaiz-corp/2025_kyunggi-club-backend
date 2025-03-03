@@ -10,10 +10,7 @@ import { ClubController } from './club.controller'
 import { ClubService } from './club.service'
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ClubEntity]),
-    TypeOrmModule.forFeature([ClubTemplateEntity]),
-  ],
+  imports: [TypeOrmModule.forFeature([ClubEntity, ClubTemplateEntity])],
   controllers: [ClubController],
   providers: [ClubService],
 })

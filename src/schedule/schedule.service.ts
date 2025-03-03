@@ -13,7 +13,7 @@ import {
 
 import ScheduleMutateRequestDto, {
   OperationScheduleMutateRequestDto,
-} from './dto/ScheduleMutateRequest.dto'
+} from './dto/request/schedule-mutate.request.dto'
 
 @Injectable()
 export class ScheduleService {

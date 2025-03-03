@@ -3,7 +3,7 @@ import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger'
 
 import { CdnService } from './cdn.service'
 
-import PresignedUrlResponseDto from './dto/presignedUrlResponse.dto'
+import PresignedUrlResponseDto from './dto/response/presigned-url.response.dto'
 
 @ApiTags('Cdn - CDN 업로드 관리 API')
 @Controller('cdn')

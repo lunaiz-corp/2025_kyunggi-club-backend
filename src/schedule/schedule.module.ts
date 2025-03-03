@@ -11,8 +11,7 @@ import { ScheduleService } from './schedule.service'
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ScheduleEntity]),
-    TypeOrmModule.forFeature([OperationScheduleEntity]),
+    TypeOrmModule.forFeature([ScheduleEntity, OperationScheduleEntity]),
   ],
   controllers: [ScheduleController],
   providers: [ScheduleService],

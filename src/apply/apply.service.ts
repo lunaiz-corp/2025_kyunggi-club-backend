@@ -22,11 +22,11 @@ import {
 } from 'src/common/repository/entity/apply.entity'
 
 import APIException from 'src/common/dto/APIException.dto'
-import PassHashResponseDto from './dto/PassHashResponse.dto'
-import PassCallbackResponseDto from './dto/PassCallbackResponse.dto'
+import PassHashResponseDto from './dto/response/pass-hash.response.dto'
+import PassCallbackResponseDto from './dto/response/pass-callback.response.dto'
 
-import SubmitApplicationRequestDto from './dto/SubmitApplicationRequest.dto'
-import ApplicationStatusMutateRequestDto from './dto/ApplicationStatusMutateRequest.dto'
+import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
+import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
 
 @Injectable()
 export class ApplyService {

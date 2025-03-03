@@ -10,7 +10,7 @@ import {
   ClubEntity,
   ClubTemplateEntity,
 } from 'src/common/repository/entity/club.entity'
-import ClubTemplateMutateRequestDto from './dto/ClubTemplateMutateRequest.dto'
+import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
 import APIException from 'src/common/dto/APIException.dto'
 
 @Injectable()

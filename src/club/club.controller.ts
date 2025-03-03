@@ -11,7 +11,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import { ClubService } from './club.service'
-import ClubTemplateMutateRequestDto from './dto/ClubTemplateMutateRequest.dto'
+import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
 import {
   ClubEntity,
   ClubTemplateEntity,

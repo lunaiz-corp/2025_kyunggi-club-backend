@@ -12,11 +12,11 @@ import {
 } from '@nestjs/common'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
 
-import SubmitApplicationRequestDto from './dto/SubmitApplicationRequest.dto'
-import ApplicationStatusMutateRequestDto from './dto/ApplicationStatusMutateRequest.dto'
+import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
+import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
 
-import PassHashResponseDto from './dto/PassHashResponse.dto'
-import PassCallbackRequestDto from './dto/PassCallbackRequest.dto'
+import PassHashResponseDto from './dto/response/pass-hash.response.dto'
+import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
 
 import { ApplyService } from './apply.service'
 

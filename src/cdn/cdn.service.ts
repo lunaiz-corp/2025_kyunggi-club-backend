@@ -7,7 +7,7 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 import APIException from 'src/common/dto/APIException.dto'
-import PresignedUrlResponseDto from './dto/presignedUrlResponse.dto'
+import PresignedUrlResponseDto from './dto/response/presigned-url.response.dto'
 
 @Injectable()
 export class CdnService {

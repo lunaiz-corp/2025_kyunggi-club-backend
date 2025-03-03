@@ -13,7 +13,7 @@ import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 import { ScheduleEntity } from 'src/common/repository/entity/schedule.entity'
 
 import { ScheduleService } from './schedule.service'
-import ScheduleMutateRequestDto from './dto/ScheduleMutateRequest.dto'
+import ScheduleMutateRequestDto from './dto/request/schedule-mutate.request.dto'
 
 @ApiTags('Schedule - 일정 관리 API')
 @Controller('schedule')

@@ -9,7 +9,7 @@ import { Repository, UpdateResult, DeleteResult } from 'typeorm'
 import { NoticeEntity } from 'src/common/repository/entity/notice.entity'
 
 import APIException from 'src/common/dto/APIException.dto'
-import NoticeMutateRequestDto from './dto/NoticeMutateRequest.dto'
+import NoticeMutateRequestDto from './dto/request/notice-mutate.request.dto'
 
 @Injectable()
 export class NoticeService {
