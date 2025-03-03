@@ -9,12 +9,6 @@ export class ClubTemplateMutateRequestDto {
   id: number
 
   /**
-   * 대상 동아리 ID
-   * @example "list"
-   */
-  club: string
-
-  /**
    * 질문
    * @example "무임승차를 하실건가요?"
    */

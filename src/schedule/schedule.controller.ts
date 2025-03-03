@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   Put,
+  UseGuards,
 } from '@nestjs/common'
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 
 import { ScheduleEntity } from 'src/common/repository/entity/schedule.entity'
+import { AuthGuard } from 'src/auth/auth.guard'
 
 import { ScheduleService } from './schedule.service'
 import ScheduleMutateRequestDto from './dto/request/schedule-mutate.request.dto'
@@ -32,19 +34,23 @@ export class ScheduleController {
   }
 
   @Put('')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 일정 추가',
     description: '새로운 일정을 추가합니다.',
   })
+  @ApiBearerAuth()
   async createSchedule(@Body() data: ScheduleMutateRequestDto) {
     await this.scheduleService.createSchedule(data)
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 일정 수정',
     description: '일정을 수정합니다.',
   })
+  @ApiBearerAuth()
   @ApiParam({ name: 'id', example: 'b1e7dea0-2060-4f0a-835a-a51636fa1926' })
   async updateSchedule(
     @Param('id') id: string,
@@ -54,10 +60,12 @@ export class ScheduleController {
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 일정 삭제',
     description: '일정을 삭제합니다.',
   })
+  @ApiBearerAuth()
   @ApiParam({ name: 'id', example: 'b1e7dea0-2060-4f0a-835a-a51636fa1926' })
   async deleteSchedule(@Param('id') id: string) {
     return this.scheduleService.deleteSchedule(id)

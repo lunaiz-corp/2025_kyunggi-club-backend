@@ -28,6 +28,7 @@ async function bootstrap() {
         '경기고등학교 이공연 선발 시스템을 위한 백엔드 RestAPI 입니다.',
       )
       .setVersion(version)
+      .addBearerAuth()
       .build()
 
     await SwaggerModule.loadPluginMetadata(metadata)

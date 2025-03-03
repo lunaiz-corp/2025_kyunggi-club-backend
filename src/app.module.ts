@@ -9,6 +9,8 @@ import { dataSourceConfig } from './common/repository/typeorm.config'
 
 import { AppController } from './app.controller'
 
+import { AuthModule } from './auth/auth.module'
+
 import { ClubModule } from './club/club.module'
 import { ApplyModule } from './apply/apply.module'
 import { ScheduleModule } from './schedule/schedule.module'
@@ -36,6 +38,8 @@ import { AdvertisementModule } from './advertisement/advertisement.module'
           isGlobal: true,
         }),
     AppModule,
+
+    AuthModule,
 
     ClubModule,
     ApplyModule,

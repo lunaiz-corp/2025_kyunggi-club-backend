@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   Put,
+  UseGuards,
 } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import { NoticeEntity } from 'src/common/repository/entity/notice.entity'
+import { AuthGuard } from 'src/auth/auth.guard'
 
 import { NoticeService } from './notice.service'
 import NoticeMutateRequestDto from './dto/request/notice-mutate.request.dto'
@@ -46,10 +48,12 @@ export class NoticeController {
   }
 
   @Put(':board')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 공지사항 추가',
     description: '새로운 공지사항을 추가합니다.',
   })
+  @ApiBearerAuth()
   async createNotice(
     @Param('board') board: string,
     @Body() data: NoticeMutateRequestDto,
@@ -58,10 +62,12 @@ export class NoticeController {
   }
 
   @Patch(':board/:id')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 공지사항 수정',
     description: '공지사항을 수정합니다.',
   })
+  @ApiBearerAuth()
   async updateNotice(
     @Param('board') board: string,
     @Param('id') id: number,
@@ -71,10 +77,12 @@ export class NoticeController {
   }
 
   @Delete(':board/:id')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 공지사항 삭제',
     description: '공지사항을 삭제합니다.',
   })
+  @ApiBearerAuth()
   async deleteNotice(
     @Param('board') board: string,
     @Param('id') id: number,

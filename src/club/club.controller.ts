@@ -7,15 +7,20 @@ import {
   Param,
   Patch,
   Put,
+  UseGuards,
 } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
 
-import { ClubService } from './club.service'
-import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
+import { AuthGuard } from 'src/auth/auth.guard'
 import {
   ClubEntity,
   ClubTemplateEntity,
 } from 'src/common/repository/entity/club.entity'
+
+import { ClubService } from './club.service'
+import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
+import ClubAdminMutateRequestDto from './dto/request/club-admin-mutate.request.dto'
+import { MemberEntity } from 'src/common/repository/entity/member.entity'
 
 @ApiTags('Club - 동아리 정보 API')
 @Controller('club')
@@ -54,10 +59,12 @@ export class ClubController {
   }
 
   @Patch(':id/forms')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 지원서 템플릿 수정',
     description: '동아리 지원서 양식을 수정합니다.',
   })
+  @ApiBearerAuth()
   async updateClubApplicationForm(
     @Param('id') id: string,
     @Body() body: ClubTemplateMutateRequestDto[],
@@ -66,29 +73,53 @@ export class ClubController {
   }
 
   @Get(':id/members')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 관리자 목록 조회',
     description: '동아리 관리자 목록을 조회합니다.',
   })
-  async retrieveClubAdmins() {
-    return
+  @ApiBearerAuth()
+  async retrieveClubAdmins(@Param('id') id: string): Promise<MemberEntity[]> {
+    return this.clubService.retrieveClubAdmins(id)
   }
 
   @Put(':id/members')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 관리자 추가',
     description: '동아리 관리자를 추가합니다.',
   })
-  async addClubAdmin() {
-    return
+  @ApiBearerAuth()
+  async addClubAdmin(
+    @Param('id') id: string,
+    @Body() body: ClubAdminMutateRequestDto,
+  ) {
+    await this.clubService.addClubAdmin(id, body)
   }
 
   @Delete(':id/members')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 관리자 삭제',
     description: '동아리 관리자를 삭제합니다.',
   })
-  async deleteClubAdmin() {
-    return
+  @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          description: '삭제할 관리자의 이메일',
+          example: 'biz.kyunggi@lunaiz.com',
+        },
+      },
+    },
+  })
+  async deleteClubAdmin(
+    @Param('id') id: string,
+    @Body() body: { email: string },
+  ) {
+    await this.clubService.deleteClubAdmin(id, body.email)
   }
 }

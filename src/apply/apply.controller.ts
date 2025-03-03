@@ -9,8 +9,9 @@ import {
   Put,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
 import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
@@ -19,6 +20,7 @@ import PassHashResponseDto from './dto/response/pass-hash.response.dto'
 import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
 
 import { ApplyService } from './apply.service'
+import { AuthGuard } from 'src/auth/auth.guard'
 
 @ApiTags('Apply - 지원서 제출, 관리 API')
 @Controller('apply')
@@ -36,25 +38,7 @@ export class ApplyController {
     return this.applyService.createApplication(body)
   }
 
-  @Get(':club')
-  @ApiOperation({
-    summary: '(ADMIN) 지원서 목록 조회',
-    description: '지원서 목록을 조회합니다.',
-  })
-  async retrieveApplicationsList(@Param('club') club: string) {
-    return this.applyService.retrieveApplicationsList(club)
-  }
-
-  @Post('notification')
-  @ApiOperation({
-    summary: '(ADMIN) 지원서 일괄 알림톡 발송',
-    description: '지원서에 대한 일괄 알림톡을 전송합니다.',
-  })
-  async sendBulkNotification() {
-    return this.applyService.sendBulkNotification()
-  }
-
-  @Get(':id')
+  @Get('status/:id')
   @ApiOperation({
     summary: '지원서 상태 조회',
     description: '지원서를 조회합니다.',
@@ -63,11 +47,35 @@ export class ApplyController {
     return this.applyService.retrieveApplicationStatus(id)
   }
 
+  @Get(':club')
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary: '(ADMIN) 지원서 목록 조회',
+    description: '지원서 목록을 조회합니다.',
+  })
+  @ApiBearerAuth()
+  async retrieveApplicationsList(@Param('club') club: string) {
+    return this.applyService.retrieveApplicationsList(club)
+  }
+
+  @Post('notification')
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary: '(ADMIN) 지원서 일괄 알림톡 발송',
+    description: '지원서에 대한 일괄 알림톡을 전송합니다.',
+  })
+  @ApiBearerAuth()
+  async sendBulkNotification() {
+    return this.applyService.sendBulkNotification()
+  }
+
   @Get(':club/:id')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 지원서 조회',
     description: '지원서를 조회합니다.',
   })
+  @ApiBearerAuth()
   async retrieveApplication(
     @Param('club') club: string,
     @Param('id') id: number,
@@ -76,10 +84,12 @@ export class ApplyController {
   }
 
   @Patch(':club/:id')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 지원서 상태 수정',
     description: '지원서를 상태를 수정합니다. (합격, 불합격...)',
   })
+  @ApiBearerAuth()
   async updateApplicationStatus(
     @Param('club') club: string,
     @Param('id') id: number,
@@ -89,10 +99,12 @@ export class ApplyController {
   }
 
   @Post(':club/:id/notification')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 지원서 개별 알림톡 발송',
     description: '지원서에 대한 개별 알림톡을 전송합니다.',
   })
+  @ApiBearerAuth()
   async sendNotification(@Param('club') club: string, @Param('id') id: number) {
     return this.applyService.sendNotification(club, id)
   }
@@ -111,6 +123,7 @@ export class ApplyController {
     summary: 'PASS 본인인증 해시값 생성',
     description: 'PASS 본인인증 요청을 위한 해시값을 생성합니다.',
   })
+  @ApiBearerAuth()
   async getPassHashData(
     @Query('orderId') orderId: string,
     @Query('device') device: 'pc' | 'android' | 'ios',

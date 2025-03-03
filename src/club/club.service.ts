@@ -10,7 +10,14 @@ import {
   ClubEntity,
   ClubTemplateEntity,
 } from 'src/common/repository/entity/club.entity'
+import {
+  MemberEntity,
+  MemberPermission,
+} from 'src/common/repository/entity/member.entity'
+
 import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
+import ClubAdminMutateRequestDto from './dto/request/club-admin-mutate.request.dto'
+
 import APIException from 'src/common/dto/APIException.dto'
 
 @Injectable()
@@ -26,6 +33,9 @@ export class ClubService {
 
     @InjectRepository(ClubTemplateEntity)
     private readonly clubTemplateRepository: Repository<ClubTemplateEntity>,
+
+    @InjectRepository(MemberEntity)
+    private readonly memberRepository: Repository<MemberEntity>,
   ) {}
 
   async retrieveClubList() {
@@ -93,15 +103,37 @@ export class ClubService {
     )
   }
 
-  async retrieveClubAdmins(id: string) {
-    return
+  async retrieveClubAdmins(id: string): Promise<MemberEntity[]> {
+    const cachedAdmins = await this.cacheManager.get<MemberEntity[]>(
+      `admin:${id}`,
+    )
+
+    if (cachedAdmins) {
+      return cachedAdmins
+    }
+
+    const admins = await this.memberRepository.find({
+      where: { club: { id } },
+    })
+
+    await this.cacheManager.set(`admin:${id}`, admins, 3600 * 1000)
+
+    return admins
   }
 
-  async addClubAdmin(id: string, data) {
-    return
+  async addClubAdmin(id: string, data: ClubAdminMutateRequestDto) {
+    await this.cacheManager.del(`admin:${id}`)
+
+    return this.memberRepository.save({
+      ...data,
+      permission: MemberPermission.ADMIN,
+      club: { id },
+    })
   }
 
   async deleteClubAdmin(id: string, email: string) {
-    return
+    await this.cacheManager.del(`admin:${id}`)
+
+    return this.memberRepository.delete({ email, club: { id } })
   }
 }

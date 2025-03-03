@@ -5,12 +5,15 @@ import {
   ClubEntity,
   ClubTemplateEntity,
 } from 'src/common/repository/entity/club.entity'
+import { MemberEntity } from 'src/common/repository/entity/member.entity'
 
 import { ClubController } from './club.controller'
 import { ClubService } from './club.service'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ClubEntity, ClubTemplateEntity])],
+  imports: [
+    TypeOrmModule.forFeature([ClubEntity, ClubTemplateEntity, MemberEntity]),
+  ],
   controllers: [ClubController],
   providers: [ClubService],
 })

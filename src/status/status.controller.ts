@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Logger, Patch } from '@nestjs/common'
-import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Body, Controller, Get, Logger, Patch, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import { StatusEntity } from 'src/common/repository/entity/status.entity'
+import { AuthGuard } from 'src/auth/auth.guard'
 
 import { StatusService } from './status.service'
 
@@ -22,10 +23,12 @@ export class StatusController {
   }
 
   @Patch('')
+  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 운영 상태 수정',
     description: '운영 상태를 수정합니다.',
   })
+  @ApiBearerAuth()
   async updateServiceStatus(@Body() data: StatusEntity) {
     await this.serviceStatus.updateServiceStatus(data)
   }
