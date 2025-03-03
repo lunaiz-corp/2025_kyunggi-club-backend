@@ -1,6 +1,9 @@
 name: Build and push container image
 on:
-  push:
+    workflow_dispatch:
+    push:
+      branches:
+        - main
 
 env:
   IMAGE_NAME: 2025_kyunggi-club-backend
