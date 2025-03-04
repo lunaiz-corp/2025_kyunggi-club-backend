@@ -11,6 +11,8 @@ import { Repository } from 'typeorm'
 import { hash, compare, genSalt } from 'bcryptjs'
 
 import ClubAdminSetpasswordRequestDto from './dto/request/club-admin-setpassword.request.dto'
+import SignInResponseDto from './dto/response/sign-in.response.dto'
+
 import APIException from 'src/common/dto/APIException.dto'
 
 @Injectable()
@@ -35,7 +37,7 @@ export class AuthService {
     return compare(raw, hashed)
   }
 
-  async signIn(email: string, password: string): Promise<any> {
+  async signIn(email: string, password: string): Promise<SignInResponseDto> {
     const user = await this.memberRepository.findOne({
       where: {
         email,
@@ -46,6 +48,13 @@ export class AuthService {
       throw new APIException(
         HttpStatus.UNAUTHORIZED,
         '아이디 또는 비밀번호가 올바르지 않습니다.',
+      )
+    }
+
+    if (!user.password) {
+      throw new APIException(
+        HttpStatus.LOCKED,
+        '비밀번호가 아직 설정되지 않았습니다. 관리자에게 문의하세요.',
       )
     }
 
@@ -69,7 +78,9 @@ export class AuthService {
     }
   }
 
-  async setAdminPassword(data: ClubAdminSetpasswordRequestDto) {
+  async setAdminPassword(
+    data: ClubAdminSetpasswordRequestDto,
+  ): Promise<Partial<MemberEntity>> {
     const savedRequest = await this.cacheManager.get<{
       club: string
       email: string
@@ -88,5 +99,10 @@ export class AuthService {
     )
 
     await this.cacheManager.del(`password-request:${data.pincode}`)
+
+    return this.memberRepository.findOne({
+      where: { club: { id: savedRequest.club }, email: savedRequest.email },
+      select: ['email', 'name', 'phone', 'role', 'permission', 'club'],
+    })
   }
 }
