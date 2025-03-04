@@ -1,0 +1,85 @@
+name: Deploy Backend with Docker Container
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  workflow_call:
+
+env:
+  IMAGE_NAME: 2025_kyunggi-club-backend
+
+jobs:
+  docker-push:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build . --file Dockerfile --tag $IMAGE_NAME --label "runnumber=${GITHUB_RUN_ID}"
+
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+
+      - name: Push image
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          [ "$VERSION" == "main" ] && VERSION=latest
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
+
+  docker-deploy:
+    needs: [docker-push]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    env:
+      TOAST_NCS_WORKLOAD_ID: 3f6a5cd7-95f0-4adf-9226-9758c3f72c65
+
+    steps:
+      - name: Get Toast Cloud Token
+        id: authorize-toast
+        run: |
+          response=$(curl -s -X POST https://oauth.api.nhncloudservice.com/oauth2/token/create \
+            -u "${{ secrets.TOAST_ACCESS_KEY_ID }}:${{ secrets.TOAST_SECRET_ACCESS_KEY }}" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials")
+
+          access_token=$(echo "$response" | jq -r '.access_token')
+
+          if [ -n "$access_token" ] && [ "$access_token" != "null" ]; then
+            echo "TOAST_ACCESS_TOKEN=$access_token" >> $GITHUB_OUTPUT
+            echo "✅ Access token retrieved and stored in environment."
+          else
+            echo "❌ Failed to retrieve access token."
+            exit 1
+          fi
+
+      - name: Stop previous Toast NCS deployment
+        run: |
+          curl -X POST https://kr1-ncs.api.nhncloudservice.com/ncs/v1.0/appkeys/${{ secrets.TOAST_NCS_API_KEY }}/workloads/${{ env.TOAST_NCS_WORKLOAD_ID }}/pause \
+            -H "x-nhn-authorization: Bearer ${{ steps.authorize-toast.outputs.TOAST_ACCESS_TOKEN }}"
+
+      - name: Trigger Toast NCS deployment
+        run: |
+          curl -X POST https://kr1-ncs.api.nhncloudservice.com/ncs/v1.0/appkeys/${{ secrets.TOAST_NCS_API_KEY }}/workloads/${{ env.TOAST_NCS_WORKLOAD_ID }}/resume \
+            -H "x-nhn-authorization: Bearer ${{ steps.authorize-toast.outputs.TOAST_ACCESS_TOKEN }}"
+
+      - name: Invalidate (Revoke) used Toast Cloud Token
+        run: |
+          curl -X POST https://oauth.api.nhncloudservice.com/oauth2/token/revoke \
+            -u "${{ secrets.TOAST_ACCESS_KEY_ID }}:${{ secrets.TOAST_SECRET_ACCESS_KEY }}" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "token=${{ steps.authorize-toast.outputs.TOAST_ACCESS_TOKEN }}"

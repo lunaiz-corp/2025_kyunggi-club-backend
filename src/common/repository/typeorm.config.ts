@@ -1,6 +1,8 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 
-process.loadEnvFile()
+try {
+  process.loadEnvFile()
+} catch {}
 
 export const dataSourceConfig: TypeOrmModuleOptions = {
   type: 'postgres',

@@ -18,5 +18,5 @@ FROM base
 COPY --from=prod-deps /usr/src/app/node_modules /usr/src/app/node_modules
 COPY --from=build /usr/src/app/dist /usr/src/app/dist
 
-EXPOSE 3000
-CMD [ "node", "dist/src/main.js" ]
+EXPOSE 4000
+CMD [ "node", "dist/main.js" ]
