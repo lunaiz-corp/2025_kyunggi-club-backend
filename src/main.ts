@@ -14,6 +14,7 @@ import metadata from './metadata'
 
 import { GlobalExceptionFilter } from './common/filter/global-exception.filter'
 import { TransformInterceptor } from './common/interceptor/transform.interceptor'
+import { writeFile } from 'node:fs/promises'
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -54,6 +55,23 @@ async function bootstrap() {
       ],
       credentials: true,
     })
+  }
+
+  if (process.env.KCP_API_CERT) {
+    const realCert = Buffer.from(process.env.KCP_API_CERT, 'base64').toString(
+      'utf-8',
+    )
+
+    await writeFile('credentials/kcp/splCert.pem', realCert)
+  }
+
+  if (process.env.KCP_API_PRIKEY) {
+    const realPrikey = Buffer.from(
+      process.env.KCP_API_PRIKEY,
+      'base64',
+    ).toString('utf-8')
+
+    await writeFile('credentials/kcp/splPrikeyPKCS8.pem', realPrikey)
   }
 
   app.useGlobalFilters(new GlobalExceptionFilter())

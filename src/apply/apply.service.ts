@@ -28,6 +28,18 @@ import PassCallbackResponseDto from './dto/response/pass-callback.response.dto'
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
 import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
 
+const KCP_API_CONSTANTS = {
+  SITECD: process.env.NODE_ENV === 'development' ? 'AO0QE' : 'AKYT9',
+  API_BASEURL:
+    process.env.NODE_ENV === 'development'
+      ? 'https://stg-spl.kcp.co.kr/std/certpass'
+      : 'https://spl.kcp.co.kr/std/certpass',
+  WD_BASEURL:
+    process.env.NODE_ENV === 'development'
+      ? 'https://testcert.kcp.co.kr'
+      : 'https://cert.kcp.co.kr',
+}
+
 @Injectable()
 export class ApplyService {
   private readonly logger = new Logger(ApplyService.name)
@@ -241,13 +253,13 @@ export class ApplyService {
       .split('.')[0]
 
     const signatureData = this.passSignatureData(
-      `${process.env.KCP_API_SITECD}^${ctType}^${taxNo}^${formattedTime}`,
+      `${KCP_API_CONSTANTS.SITECD}^${ctType}^${taxNo}^${formattedTime}`,
     )
 
     const { data } = await firstValueFrom(
-      this.httpService.post(process.env.KCP_API_BASEURL, {
+      this.httpService.post(KCP_API_CONSTANTS.API_BASEURL, {
         kcp_cert_info: this.passSerializedCert('public'),
-        site_cd: process.env.KCP_API_SITECD,
+        site_cd: KCP_API_CONSTANTS.SITECD,
         ordr_idxx: orderId,
         ct_type: ctType,
         web_siteid: '',
@@ -257,9 +269,9 @@ export class ApplyService {
       }),
     )
 
-    this.logger.debug(`[KCP Request] => ${process.env.KCP_API_BASEURL}`, {
+    this.logger.debug(`[KCP Request] => ${KCP_API_CONSTANTS.API_BASEURL}`, {
       kcp_cert_info: this.passSerializedCert('public'),
-      site_cd: process.env.KCP_API_SITECD,
+      site_cd: KCP_API_CONSTANTS.SITECD,
       ordr_idxx: orderId,
       ct_type: ctType,
       web_siteid: '',
@@ -268,7 +280,10 @@ export class ApplyService {
       kcp_sign_data: signatureData,
     })
 
-    this.logger.debug(`[KCP Response] => ${process.env.KCP_API_BASEURL}`, data)
+    this.logger.debug(
+      `[KCP Response] => ${KCP_API_CONSTANTS.API_BASEURL}`,
+      data,
+    )
 
     const passReqData = {
       data: {
@@ -280,13 +295,13 @@ export class ApplyService {
       },
       url:
         data.res_cd === '0000'
-          ? `${process.env.KCP_WD_BASEURL}/kcp_cert/cert_view.jsp`
+          ? `${KCP_API_CONSTANTS.WD_BASEURL}/kcp_cert/cert_view.jsp`
           : undefined,
       formData:
         data.res_cd === '0000'
           ? {
               // 사이트 코드
-              site_cd: process.env.KCP_API_SITECD,
+              site_cd: KCP_API_CONSTANTS.SITECD,
 
               // 요청 번호
               ordr_idxx: orderId,
@@ -363,13 +378,13 @@ export class ApplyService {
     const verifyCtType = 'CHK'
 
     const verifySignatureData = this.passSignatureData(
-      `${process.env.KCP_API_SITECD}^${verifyCtType}^${data.certNo}^${data.dnHash}`,
+      `${KCP_API_CONSTANTS.SITECD}^${verifyCtType}^${data.certNo}^${data.dnHash}`,
     )
 
     const { data: dnHashVerify } = await firstValueFrom(
-      this.httpService.post(process.env.KCP_API_BASEURL, {
+      this.httpService.post(KCP_API_CONSTANTS.API_BASEURL, {
         kcp_cert_info: this.passSerializedCert('public'),
-        site_cd: process.env.KCP_API_SITECD,
+        site_cd: KCP_API_CONSTANTS.SITECD,
         ordr_idxx: orderId,
         ct_type: verifyCtType,
         dn_hash: data.dnHash,
@@ -388,12 +403,12 @@ export class ApplyService {
 
     const decryptCtType = 'DEC'
     const decryptSignatureData = this.passSignatureData(
-      `${process.env.KCP_API_SITECD}^${decryptCtType}^${data.certNo}`,
+      `${KCP_API_CONSTANTS.SITECD}^${decryptCtType}^${data.certNo}`,
     )
 
-    this.logger.debug(`[KCP Request] => ${process.env.KCP_API_BASEURL}`, {
+    this.logger.debug(`[KCP Request] => ${KCP_API_CONSTANTS.API_BASEURL}`, {
       kcp_cert_info: this.passSerializedCert('public'),
-      site_cd: process.env.KCP_API_SITECD,
+      site_cd: KCP_API_CONSTANTS.SITECD,
       ordr_idxx: orderId,
       ct_type: decryptCtType,
       cert_no: data.certNo,
@@ -402,9 +417,9 @@ export class ApplyService {
     })
 
     const { data: decryptedData } = await firstValueFrom(
-      this.httpService.post(process.env.KCP_API_BASEURL, {
+      this.httpService.post(KCP_API_CONSTANTS.API_BASEURL, {
         kcp_cert_info: this.passSerializedCert('public'),
-        site_cd: process.env.KCP_API_SITECD,
+        site_cd: KCP_API_CONSTANTS.SITECD,
         ordr_idxx: orderId,
         ct_type: decryptCtType,
         cert_no: data.certNo,
@@ -414,7 +429,7 @@ export class ApplyService {
     )
 
     this.logger.debug(
-      `[KCP Response] => ${process.env.KCP_API_BASEURL}`,
+      `[KCP Response] => ${KCP_API_CONSTANTS.API_BASEURL}`,
       decryptedData,
     )
 
