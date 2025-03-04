@@ -47,7 +47,11 @@ async function bootstrap() {
     })
   } else {
     app.enableCors({
-      origin: ['https://kyunggi.club', 'https://www.kyunggi.club'],
+      origin: [
+        'https://kyunggi.club',
+        'https://www.kyunggi.club',
+        'https://admin.kyunggi.club',
+      ],
       credentials: true,
     })
   }
