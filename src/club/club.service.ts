@@ -150,7 +150,7 @@ export class ClubService {
     await this.cacheManager.set(
       `password-request:${randomPincode}`,
       { club: id, email: data.email },
-      3 * 60 * 60 * 1000,
+      24 * 60 * 60 * 1000,
     )
 
     await this.resend.emails.send({
