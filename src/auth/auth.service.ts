@@ -1,11 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { InjectRepository } from '@nestjs/typeorm'
+
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Cache } from 'cache-manager'
 
 import { MemberEntity } from 'src/common/repository/entity/member.entity'
 import { Repository } from 'typeorm'
 
 import { hash, compare, genSalt } from 'bcryptjs'
+
+import ClubAdminSetpasswordRequestDto from './dto/request/club-admin-setpassword.request.dto'
 import APIException from 'src/common/dto/APIException.dto'
 
 @Injectable()
@@ -14,6 +19,9 @@ export class AuthService {
 
   constructor(
     private readonly jwtService: JwtService,
+
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
 
     @InjectRepository(MemberEntity)
     private readonly memberRepository: Repository<MemberEntity>,
@@ -35,7 +43,10 @@ export class AuthService {
     })
 
     if (!user) {
-      throw new APIException(401, '아이디 또는 비밀번호가 올바르지 않습니다.')
+      throw new APIException(
+        HttpStatus.UNAUTHORIZED,
+        '아이디 또는 비밀번호가 올바르지 않습니다.',
+      )
     }
 
     const isPasswordCorrect = await this.validatePassword(
@@ -44,7 +55,10 @@ export class AuthService {
     )
 
     if (!isPasswordCorrect) {
-      throw new APIException(401, '아이디 또는 비밀번호가 올바르지 않습니다.')
+      throw new APIException(
+        HttpStatus.UNAUTHORIZED,
+        '아이디 또는 비밀번호가 올바르지 않습니다.',
+      )
     }
 
     return {
@@ -53,5 +67,26 @@ export class AuthService {
         name: user.name,
       }),
     }
+  }
+
+  async setAdminPassword(data: ClubAdminSetpasswordRequestDto) {
+    const savedRequest = await this.cacheManager.get<{
+      club: string
+      email: string
+    }>(`password-request:${data.pincode}`)
+
+    if (!savedRequest) {
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        `올바르지 않은 pincode 이거나, 만료된 요청입니다.`,
+      )
+    }
+
+    await this.memberRepository.update(
+      { club: { id: savedRequest.club }, email: savedRequest.email },
+      { password: await this.hashPassword(data.password) },
+    )
+
+    await this.cacheManager.del(`password-request:${data.pincode}`)
   }
 }

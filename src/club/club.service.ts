@@ -1,3 +1,6 @@
+import { join } from 'node:path'
+import { readFile } from 'node:fs/promises'
+
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
@@ -5,6 +8,11 @@ import { Cache } from 'cache-manager'
 
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
+
+import { Resend } from 'resend'
+
+import { customAlphabet } from 'nanoid'
+import { render } from 'ejs'
 
 import {
   ClubEntity,
@@ -24,6 +32,9 @@ import APIException from 'src/common/dto/APIException.dto'
 export class ClubService {
   private readonly logger = new Logger(ClubService.name)
 
+  private readonly nanoid
+  private readonly resend: Resend
+
   constructor(
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
@@ -36,7 +47,11 @@ export class ClubService {
 
     @InjectRepository(MemberEntity)
     private readonly memberRepository: Repository<MemberEntity>,
-  ) {}
+  ) {
+    this.nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 6)
+
+    this.resend = new Resend(process.env.RESEND_API_KEY)
+  }
 
   async retrieveClubList() {
     const cachedClubs = await this.cacheManager.get<ClubEntity[]>('club')
@@ -124,10 +139,34 @@ export class ClubService {
   async addClubAdmin(id: string, data: ClubAdminMutateRequestDto) {
     await this.cacheManager.del(`admin:${id}`)
 
-    return this.memberRepository.save({
+    const randomPincode = this.nanoid(6)
+
+    await this.memberRepository.save({
       ...data,
       permission: MemberPermission.ADMIN,
       club: { id },
+    })
+
+    await this.cacheManager.set(
+      `password-request:${randomPincode}`,
+      { club: id, email: data.email },
+      3 * 60 * 60 * 1000,
+    )
+
+    await this.resend.emails.send({
+      from: '경기고등학교 이공계동아리연합 <no-reply@kyunggi.club>',
+      to: [data.email],
+      subject:
+        '[경기고등학교 이공계동아리연합 선발 사이트] 관리자 비밀번호 설정 안내',
+      html: render(
+        (
+          await readFile(join(__dirname, 'template/password-reset.ejs'))
+        ).toString(),
+        {
+          club: await this.retrieveClubInfo(id),
+          pincode: randomPincode,
+        },
+      ),
     })
   }
 

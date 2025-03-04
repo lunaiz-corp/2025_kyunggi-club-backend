@@ -6,6 +6,7 @@ import {
   UseGuards,
   Get,
   Req,
+  Patch,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
@@ -13,6 +14,7 @@ import { AuthService } from './auth.service'
 import { AuthGuard } from './auth.guard'
 
 import SignInRequestDto from './dto/request/sign-in.request.dto'
+import ClubAdminSetpasswordRequestDto from './dto/request/club-admin-setpassword.request.dto'
 
 @ApiTags('Auth - 관리자 로그인 API')
 @Controller('auth')
@@ -28,6 +30,15 @@ export class AuthController {
   })
   async signIn(@Body() body: SignInRequestDto) {
     await this.authService.signIn(body.email, body.password)
+  }
+
+  @Patch('set-password')
+  @ApiOperation({
+    summary: '(ADMIN) 동아리 관리자 초기 비밀번호 설정',
+    description: '동아리 관리자의 초기 비밀번호를 설정합니다.',
+  })
+  async setAdminPassword(@Body() body: ClubAdminSetpasswordRequestDto) {
+    await this.authService.setAdminPassword(body)
   }
 
   @Get('profile')
