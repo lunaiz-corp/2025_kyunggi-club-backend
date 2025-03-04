@@ -41,4 +41,6 @@ lerna-debug.log*
 credentials/kcp/*
 !credentials/kcp/.gitkeep
 
-.docker/
+.docker/*
+!.docker/redis/
+.docker/redis/data/

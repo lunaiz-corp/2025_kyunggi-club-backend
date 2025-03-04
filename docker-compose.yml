@@ -27,8 +27,8 @@ services:
   #     - 'name=redis'
   #     - 'mode=standalone'
   #   volumes:
-  #     - ./redis/data:/data
-  #     - ./redis/conf/redis.conf:/usr/local/etc/redis/redis.conf
+  #     - ./.docker/redis/data:/data
+  #     - ./.docker/redis/conf/redis.conf:/usr/local/etc/redis/redis.conf
   #   restart: unless-stopped
 
   # backend:
