@@ -44,6 +44,7 @@ async function bootstrap() {
   if (process.env.GLOBAL_CORS === '1') {
     app.enableCors({
       origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
       // credentials: true,
     })
   } else {
@@ -53,6 +54,7 @@ async function bootstrap() {
         'https://www.kyunggi.club',
         'https://admin.kyunggi.club',
       ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
       credentials: true,
     })
   }
