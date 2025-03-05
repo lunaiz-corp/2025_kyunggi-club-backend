@@ -14,10 +14,8 @@ import { Cache } from 'cache-manager'
 import {
   StudentEntity,
   ParentEntity,
-  FormRawAnswerEntity,
   FormAnswerEntity,
   ApplyEntity,
-  ApplyStatusEntity,
   CurrentStatus,
 } from 'src/common/repository/entity/apply.entity'
 
@@ -54,14 +52,8 @@ export class ApplyService {
     @InjectRepository(ParentEntity)
     private readonly parentRepository: Repository<ParentEntity>,
 
-    @InjectRepository(FormRawAnswerEntity)
-    private readonly formRawAnswerRepository: Repository<FormRawAnswerEntity>,
-
     @InjectRepository(FormAnswerEntity)
     private readonly formAnswerRepository: Repository<FormAnswerEntity>,
-
-    @InjectRepository(ApplyStatusEntity)
-    private readonly applyStatusRepository: Repository<ApplyStatusEntity>,
 
     @InjectRepository(ApplyEntity)
     private readonly applyRepository: Repository<ApplyEntity>,
@@ -109,26 +101,11 @@ export class ApplyService {
 
     formAnswers.forEach(async (answers) => {
       answers.answers.forEach(async (answer) => {
-        await this.formRawAnswerRepository.insert({
+        await this.formAnswerRepository.insert({
           id: `${userInfo.id}-${answer.id}`,
           answer: answer.answer,
           files: answer.files,
         })
-      })
-
-      await this.formAnswerRepository.insert({
-        id: `${userInfo.id}-${answers.club}`,
-        student: { id: userInfo.id },
-        club: { id: answers.club },
-        answers: answers.answers.map((answer) => ({
-          id: `${userInfo.id}-${answer.id}`,
-        })),
-      })
-
-      await this.applyStatusRepository.insert({
-        student: { id: userInfo.id },
-        club: { id: answers.club },
-        status: CurrentStatus.WAITING,
       })
     })
 
@@ -138,12 +115,13 @@ export class ApplyService {
       answers: formAnswers.map((answers) => ({
         id: `${userInfo.id}-${answers.club}`,
       })),
+      status: CurrentStatus.WAITING,
     })
   }
 
   async retrieveApplicationsList(club: string) {
     const applications = await this.applyRepository.find({
-      where: { answers: { club: { id: club } } },
+      where: { club: { id: club } },
     })
 
     return applications
@@ -163,7 +141,7 @@ export class ApplyService {
     const application = await this.applyRepository.findOne({
       where: {
         student: { id },
-        answers: { club: { id: club } },
+        club: { id: club },
       },
     })
 
@@ -178,7 +156,7 @@ export class ApplyService {
     const application = await this.applyRepository.findOne({
       where: {
         student: { id },
-        answers: { club: { id: club } },
+        club: { id: club },
       },
     })
 
@@ -186,7 +164,7 @@ export class ApplyService {
       throw new APIException(404, '존재하지 않는 지원서입니다.')
     }
 
-    await this.applyStatusRepository.update(
+    await this.applyRepository.update(
       {
         student: { id },
         club: { id: club },
@@ -203,7 +181,7 @@ export class ApplyService {
     const application = await this.applyRepository.findOne({
       where: {
         student: { id },
-        answers: { club: { id: club } },
+        club: { id: club },
       },
     })
 
@@ -211,7 +189,7 @@ export class ApplyService {
       throw new APIException(404, '존재하지 않는 지원서입니다.')
     }
 
-    await this.applyStatusRepository.update(
+    await this.applyRepository.update(
       {
         student: { id },
         club: { id: club },

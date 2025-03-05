@@ -96,14 +96,14 @@ export class AuthService {
     }
 
     await this.memberRepository.update(
-      { club: { id: savedRequest.club }, email: savedRequest.email },
+      { email: savedRequest.email },
       { password: await this.hashPassword(data.password) },
     )
 
     await this.cacheManager.del(`password-request:${data.pincode}`)
 
     return this.memberRepository.findOne({
-      where: { club: { id: savedRequest.club }, email: savedRequest.email },
+      where: { email: savedRequest.email },
       select: ['email', 'name', 'phone', 'role', 'permission', 'club'],
     })
   }

@@ -4,8 +4,8 @@ import {
   BaseEntity,
   Column,
   Entity,
-  JoinColumn,
-  ManyToOne,
+  JoinTable,
+  ManyToMany,
   PrimaryColumn,
 } from 'typeorm'
 
@@ -58,12 +58,12 @@ export class MemberEntity extends BaseEntity {
   permission: MemberPermission
 
   @ApiProperty({ type: () => ClubEntity })
-  @ManyToOne(() => ClubEntity, (club) => club.id, {
+  @ManyToMany(() => ClubEntity, (club) => club.id, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
-  @JoinColumn({ name: 'club_id', referencedColumnName: 'id' })
-  club: ClubEntity
+  @JoinTable()
+  club: ClubEntity[]
 
   @ApiProperty({ type: Date })
   @Column({

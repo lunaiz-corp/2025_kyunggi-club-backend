@@ -5,9 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import {
   StudentEntity,
   ParentEntity,
-  FormRawAnswerEntity,
   FormAnswerEntity,
-  ApplyStatusEntity,
   ApplyEntity,
 } from 'src/common/repository/entity/apply.entity'
 
@@ -20,9 +18,7 @@ import { ApplyService } from './apply.service'
     TypeOrmModule.forFeature([
       StudentEntity,
       ParentEntity,
-      FormRawAnswerEntity,
       FormAnswerEntity,
-      ApplyStatusEntity,
       ApplyEntity,
     ]),
   ],

@@ -136,7 +136,15 @@ export class ClubService {
     return admins
   }
 
-  async addClubAdmin(id: string, data: ClubAdminMutateRequestDto) {
+  async addClubAdmin(
+    user: MemberEntity,
+    id: string,
+    data: ClubAdminMutateRequestDto,
+  ) {
+    if (!user.club.map((x) => x.id).includes(id)) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     await this.cacheManager.del(`admin:${id}`)
 
     const randomPincode = this.nanoid(6)
@@ -144,7 +152,20 @@ export class ClubService {
     await this.memberRepository.save({
       ...data,
       permission: MemberPermission.ADMIN,
-      club: { id },
+      club:
+        id !== 'global'
+          ? [{ id }]
+          : [
+              'list',
+              'kec',
+              'kphc',
+              'kbrc',
+              'kmoc',
+              'kac',
+              'css',
+              'cel',
+              'kcc',
+            ].map((x) => ({ id: x })),
     })
 
     await this.cacheManager.set(
@@ -163,7 +184,10 @@ export class ClubService {
           await readFile(join(__dirname, 'template/password-reset.ejs'))
         ).toString(),
         {
-          club: await this.retrieveClubInfo(id),
+          club:
+            id !== 'global'
+              ? await this.retrieveClubInfo(id)
+              : 'GLOBAL_SUPERADMIN',
           pincode: randomPincode,
         },
       ),

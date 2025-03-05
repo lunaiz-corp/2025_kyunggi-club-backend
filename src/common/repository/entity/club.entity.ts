@@ -4,9 +4,12 @@ import {
   Column,
   Entity,
   JoinColumn,
+  ManyToMany,
   ManyToOne,
   PrimaryColumn,
 } from 'typeorm'
+
+import { MemberEntity } from './member.entity'
 
 export enum QuestionType {
   SHORT_INPUT = 'SHORT_INPUT',
@@ -29,6 +32,10 @@ export class ClubEntity extends BaseEntity {
   @ApiProperty({ type: String })
   @Column({ type: 'text' })
   description: string
+
+  @ManyToMany(() => MemberEntity, (user) => user.club)
+  @JoinColumn({ name: 'member_email', referencedColumnName: 'email' })
+  members: MemberEntity[]
 }
 
 @Entity({ name: 'template' })

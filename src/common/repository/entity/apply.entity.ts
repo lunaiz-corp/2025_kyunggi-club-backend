@@ -68,8 +68,8 @@ export class ParentEntity extends BaseEntity {
   di?: string
 }
 
-@Entity({ name: 'raw_answer' })
-export class FormRawAnswerEntity extends BaseEntity {
+@Entity({ name: 'answer' })
+export class FormAnswerEntity extends BaseEntity {
   @ApiProperty({ type: String, description: '질문 번호' })
   @PrimaryColumn()
   id: string
@@ -81,64 +81,6 @@ export class FormRawAnswerEntity extends BaseEntity {
   @ApiProperty({ type: [String], isArray: true, required: false })
   @Column({ type: 'text', array: true, nullable: true })
   files: string[]
-}
-
-@Entity({ name: 'answers' })
-export class FormAnswerEntity extends BaseEntity {
-  @ApiProperty({ type: String })
-  @PrimaryColumn()
-  id: string
-
-  @ApiProperty({ type: () => StudentEntity })
-  @ManyToOne(() => StudentEntity, (club) => club.id, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'student_id', referencedColumnName: 'id' })
-  student: StudentEntity
-
-  @ApiProperty({ type: () => ClubEntity })
-  @ManyToOne(() => ClubEntity, (club) => club.id, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'club_id', referencedColumnName: 'id' })
-  club: ClubEntity
-
-  @ApiProperty({ type: () => [FormRawAnswerEntity], isArray: true })
-  @ManyToMany(() => FormRawAnswerEntity, (rawAnswer) => rawAnswer.id, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'raw_answer_id', referencedColumnName: 'id' })
-  answers: FormRawAnswerEntity[]
-}
-
-@Entity({ name: 'apply_status' })
-export class ApplyStatusEntity extends BaseEntity {
-  @ApiProperty({ type: Number })
-  @PrimaryGeneratedColumn({ type: 'bigint' })
-  id: number
-
-  @ApiProperty({ type: () => StudentEntity })
-  @ManyToOne(() => StudentEntity, (student) => student.id, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'student_id', referencedColumnName: 'id' })
-  student: StudentEntity
-
-  @ApiProperty({ type: () => ClubEntity })
-  @ManyToOne(() => ClubEntity, (club) => club.id, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinColumn({ name: 'club_id', referencedColumnName: 'id' })
-  club: ClubEntity
-
-  @ApiProperty({ type: String, enum: Object.values(CurrentStatus) })
-  @Column({ type: 'enum', enum: Object.values(CurrentStatus) })
-  status: CurrentStatus
 }
 
 @Entity({ name: 'apply' })
@@ -163,11 +105,23 @@ export class ApplyEntity extends BaseEntity {
   @JoinColumn({ name: 'parent_phone', referencedColumnName: 'phone' })
   parent: ParentEntity
 
+  @ApiProperty({ type: () => ClubEntity })
+  @ManyToOne(() => ClubEntity, (club) => club.id, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'club_id', referencedColumnName: 'id' })
+  club: ClubEntity
+
   @ApiProperty({ type: () => [FormAnswerEntity], isArray: true })
-  @ManyToMany(() => FormAnswerEntity, (answer) => answer.id, {
+  @ManyToMany(() => FormAnswerEntity, (rawAnswer) => rawAnswer.id, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
   @JoinColumn({ name: 'answer_id', referencedColumnName: 'id' })
   answers: FormAnswerEntity[]
+
+  @ApiProperty({ type: String, enum: Object.values(CurrentStatus) })
+  @Column({ type: 'enum', enum: Object.values(CurrentStatus) })
+  status: CurrentStatus
 }

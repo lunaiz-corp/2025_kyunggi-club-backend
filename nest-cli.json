@@ -7,6 +7,10 @@
     "typeCheck": true,
     
     "deleteOutDir": true,
+    "assets": [
+      { "include": "**/*.ejs" }
+    ],
+    
     "plugins": [
       {
         "name": "@nestjs/swagger",

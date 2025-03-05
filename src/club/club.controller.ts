@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Put,
+  Req,
   UseGuards,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
@@ -21,6 +22,7 @@ import { ClubService } from './club.service'
 import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
 import ClubAdminMutateRequestDto from './dto/request/club-admin-mutate.request.dto'
 import { MemberEntity } from 'src/common/repository/entity/member.entity'
+import { FastifyRequest } from 'fastify'
 
 @ApiTags('Club - 동아리 정보 API')
 @Controller('club')
@@ -91,10 +93,11 @@ export class ClubController {
   })
   @ApiBearerAuth()
   async addClubAdmin(
+    @Req() req: FastifyRequest & { user: MemberEntity },
     @Param('id') id: string,
     @Body() body: ClubAdminMutateRequestDto,
   ) {
-    await this.clubService.addClubAdmin(id, body)
+    await this.clubService.addClubAdmin(req.user, id, body)
   }
 
   @Delete(':id/members')
