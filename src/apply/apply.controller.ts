@@ -33,6 +33,63 @@ export class ApplyController {
 
   constructor(private readonly applyService: ApplyService) {}
 
+  @Get('pass/encrypt')
+  @ApiOperation({
+    summary: 'PASS 본인인증 해시값 생성',
+    description: 'PASS 본인인증 요청을 위한 해시값을 생성합니다.',
+  })
+  @ApiBearerAuth()
+  async getPassHashData(
+    @Query('orderId') orderId: string,
+    @Query('device') device: 'pc' | 'android' | 'ios',
+  ): Promise<PassHashResponseDto> {
+    return await this.applyService.getPassHashData(orderId, device)
+  }
+
+  @Post('pass/callback')
+  @ApiOperation({
+    summary: 'PASS 본인인증 콜백 처리',
+    description: 'PASS 본인인증 콜백을 처리합니다.',
+  })
+  async passCallback(
+    @Res() res: FastifyReply,
+    @Body() body: PassCallbackRequestDto,
+  ) {
+    const host =
+      process.env.NODE_ENV === 'development'
+        ? 'http://macbook:3000'
+        : 'https://kyunggi.club'
+
+    if (body.res_cd !== '0000') {
+      const encodedResponse = Buffer.from(
+        JSON.stringify({ res_cd: body.res_cd, res_msg: body.res_msg }),
+      ).toString('base64')
+
+      return res.redirect(
+        `${host}/apply/pass/callback?orderId=${body.ordr_idxx}&data=${encodedResponse}`,
+        302,
+      )
+    }
+
+    const response = await this.applyService.getPassVerifyResult(
+      body.ordr_idxx,
+      {
+        certNo: body.cert_no,
+        dnHash: body.dn_hash,
+        certData: body.enc_cert_data2,
+      },
+    )
+
+    const encodedResponse = Buffer.from(JSON.stringify(response)).toString(
+      'base64',
+    )
+
+    return res.redirect(
+      `${host}/apply/pass/callback?orderId=${body.ordr_idxx}&data=${encodedResponse}`,
+      302,
+    )
+  }
+
   @Put('new')
   @ApiOperation({
     summary: '지원서 제출',
@@ -124,62 +181,5 @@ export class ApplyController {
   })
   async finalSubmit(@Param('club') club: string, @Param('id') id: number) {
     await this.applyService.finalSubmit(club, id)
-  }
-
-  @Get('pass/encrypt')
-  @ApiOperation({
-    summary: 'PASS 본인인증 해시값 생성',
-    description: 'PASS 본인인증 요청을 위한 해시값을 생성합니다.',
-  })
-  @ApiBearerAuth()
-  async getPassHashData(
-    @Query('orderId') orderId: string,
-    @Query('device') device: 'pc' | 'android' | 'ios',
-  ): Promise<PassHashResponseDto> {
-    return await this.applyService.getPassHashData(orderId, device)
-  }
-
-  @Post('pass/callback')
-  @ApiOperation({
-    summary: 'PASS 본인인증 콜백 처리',
-    description: 'PASS 본인인증 콜백을 처리합니다.',
-  })
-  async passCallback(
-    @Res() res: FastifyReply,
-    @Body() body: PassCallbackRequestDto,
-  ) {
-    const host =
-      process.env.NODE_ENV === 'development'
-        ? 'http://macbook:3000'
-        : 'https://kyunggi.club'
-
-    if (body.res_cd !== '0000') {
-      const encodedResponse = Buffer.from(
-        JSON.stringify({ res_cd: body.res_cd, res_msg: body.res_msg }),
-      ).toString('base64')
-
-      return res.redirect(
-        `${host}/apply/pass/callback?orderId=${body.ordr_idxx}&data=${encodedResponse}`,
-        302,
-      )
-    }
-
-    const response = await this.applyService.getPassVerifyResult(
-      body.ordr_idxx,
-      {
-        certNo: body.cert_no,
-        dnHash: body.dn_hash,
-        certData: body.enc_cert_data2,
-      },
-    )
-
-    const encodedResponse = Buffer.from(JSON.stringify(response)).toString(
-      'base64',
-    )
-
-    return res.redirect(
-      `${host}/apply/pass/callback?orderId=${body.ordr_idxx}&data=${encodedResponse}`,
-      302,
-    )
   }
 }
