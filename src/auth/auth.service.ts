@@ -70,10 +70,12 @@ export class AuthService {
       )
     }
 
+    const { email: _, ...tokenUser } = user
+
     return {
       accessToken: await this.jwtService.signAsync({
         sub: user.email,
-        name: user.name,
+        ...tokenUser,
       }),
     }
   }

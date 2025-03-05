@@ -30,7 +30,7 @@ export class ScheduleController {
     description: '모든 일정을 조회합니다.',
   })
   async retrieveSchedulesList(): Promise<ScheduleEntity[]> {
-    return this.scheduleService.retrieveSchedulesList()
+    return await this.scheduleService.retrieveSchedulesList()
   }
 
   @Put('')
@@ -56,7 +56,7 @@ export class ScheduleController {
     @Param('id') id: string,
     @Body() data: ScheduleMutateRequestDto,
   ) {
-    return this.scheduleService.updateSchedule(id, data)
+    await this.scheduleService.updateSchedule(id, data)
   }
 
   @Delete(':id')
@@ -68,6 +68,6 @@ export class ScheduleController {
   @ApiBearerAuth()
   @ApiParam({ name: 'id', example: 'b1e7dea0-2060-4f0a-835a-a51636fa1926' })
   async deleteSchedule(@Param('id') id: string) {
-    return this.scheduleService.deleteSchedule(id)
+    await this.scheduleService.deleteSchedule(id)
   }
 }

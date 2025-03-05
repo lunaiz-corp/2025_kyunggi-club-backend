@@ -35,7 +35,7 @@ export class ClubController {
     description: '동아리 목록을 조회합니다.',
   })
   async retrieveClubList(): Promise<ClubEntity[]> {
-    return this.clubService.retrieveClubList()
+    return await this.clubService.retrieveClubList()
   }
 
   @Get(':id')
@@ -44,7 +44,7 @@ export class ClubController {
     description: '동아리 소개 페이지용 정보를 조회합니다.',
   })
   async retrieveClubInfo(@Param('id') id: string): Promise<ClubEntity> {
-    return this.clubService.retrieveClubInfo(id)
+    return await this.clubService.retrieveClubInfo(id)
   }
 
   @Get(':id/forms')
@@ -55,7 +55,7 @@ export class ClubController {
   async retrieveClubApplicationForm(
     @Param('id') id: string,
   ): Promise<ClubTemplateEntity[]> {
-    return this.clubService.retrieveClubApplicationForm(id)
+    return await this.clubService.retrieveClubApplicationForm(id)
   }
 
   @Patch(':id/forms')
@@ -80,7 +80,7 @@ export class ClubController {
   })
   @ApiBearerAuth()
   async retrieveClubAdmins(@Param('id') id: string): Promise<MemberEntity[]> {
-    return this.clubService.retrieveClubAdmins(id)
+    return await this.clubService.retrieveClubAdmins(id)
   }
 
   @Put(':id/members')

@@ -10,6 +10,7 @@ import {
 import { FastifyRequest } from 'fastify'
 
 import APIException from 'src/common/dto/APIException.dto'
+import { MemberEntity } from 'src/common/repository/entity/member.entity'
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -25,18 +26,20 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      const parsedToken = await this.jwtService.verifyAsync<{
-        sub: string
-        name: string
-        iat: number
-        exp: number
-      }>(token, {
+      const parsedToken = await this.jwtService.verifyAsync<
+        {
+          sub: string
+          iat: number
+          exp: number
+        } & Omit<MemberEntity, 'email'>
+      >(token, {
         secret: process.env.JWT_SECRET,
       })
 
       const iat = new Date().getTime() / 1000
       if (parsedToken && parsedToken.iat > iat && parsedToken.exp < iat) {
-        request['user'] = parsedToken
+        const { sub, iat: _, exp: __, ...user } = parsedToken
+        request['user'] = { ...user, email: sub }
       } else {
         throw new APIException(
           HttpStatus.UNAUTHORIZED,

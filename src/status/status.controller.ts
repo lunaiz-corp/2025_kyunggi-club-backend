@@ -19,7 +19,7 @@ export class StatusController {
     description: '운영 상태를 조회합니다.',
   })
   async retrieveServiceStatus(): Promise<StatusEntity> {
-    return this.serviceStatus.retrieveServiceStatus()
+    return await this.serviceStatus.retrieveServiceStatus()
   }
 
   @Patch('')

@@ -32,7 +32,7 @@ export class NoticeController {
   async retrieveNoticesList(
     @Param('board') board: string,
   ): Promise<NoticeEntity[]> {
-    return this.noticeService.retrieveNoticesList(board)
+    return await this.noticeService.retrieveNoticesList(board)
   }
 
   @Get(':board/:id')
@@ -44,7 +44,7 @@ export class NoticeController {
     @Param('board') board: string,
     @Param('id') id: number,
   ): Promise<NoticeEntity> {
-    return this.noticeService.retrieveNotice(board, id)
+    return await this.noticeService.retrieveNotice(board, id)
   }
 
   @Put(':board')
@@ -57,7 +57,7 @@ export class NoticeController {
   async createNotice(
     @Param('board') board: string,
     @Body() data: NoticeMutateRequestDto,
-  ): Promise<void> {
+  ) {
     await this.noticeService.createNotice(board, data)
   }
 

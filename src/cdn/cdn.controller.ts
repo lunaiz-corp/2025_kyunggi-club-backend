@@ -27,6 +27,6 @@ export class CdnController {
     @Query('filename') filename: string,
     @Query('keyPrefix') keyPrefix?: string,
   ): Promise<PresignedUrlResponseDto> {
-    return this.cdnService.createPresignedUrl(type, filename, keyPrefix)
+    return await this.cdnService.createPresignedUrl(type, filename, keyPrefix)
   }
 }

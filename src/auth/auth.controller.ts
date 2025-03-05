@@ -15,6 +15,9 @@ import { AuthGuard } from './auth.guard'
 
 import SignInRequestDto from './dto/request/sign-in.request.dto'
 import ClubAdminSetpasswordRequestDto from './dto/request/club-admin-setpassword.request.dto'
+import { MemberEntity } from 'src/common/repository/entity/member.entity'
+import SignInResponseDto from './dto/response/sign-in.response.dto'
+import { FastifyRequest } from 'fastify'
 
 @ApiTags('Auth - 관리자 로그인 API')
 @Controller('auth')
@@ -28,8 +31,8 @@ export class AuthController {
     summary: '로그인',
     description: '동아리 관리자에 로그인하고 Access Token을 받습니다.',
   })
-  async signIn(@Body() body: SignInRequestDto) {
-    await this.authService.signIn(body.email, body.password)
+  async signIn(@Body() body: SignInRequestDto): Promise<SignInResponseDto> {
+    return await this.authService.signIn(body.email, body.password)
   }
 
   @Patch('set-password')
@@ -37,8 +40,10 @@ export class AuthController {
     summary: '(ADMIN) 동아리 관리자 초기 비밀번호 설정',
     description: '동아리 관리자의 초기 비밀번호를 설정합니다.',
   })
-  async setAdminPassword(@Body() body: ClubAdminSetpasswordRequestDto) {
-    await this.authService.setAdminPassword(body)
+  async setAdminPassword(
+    @Body() body: ClubAdminSetpasswordRequestDto,
+  ): Promise<Partial<MemberEntity>> {
+    return await this.authService.setAdminPassword(body)
   }
 
   @Get('profile')
@@ -48,7 +53,7 @@ export class AuthController {
     description: '현재 로그인 된 계정을 조회합니다.',
   })
   @ApiBearerAuth()
-  getProfile(@Req() req) {
+  getProfile(@Req() req: FastifyRequest & { user: MemberEntity }) {
     return req.user
   }
 }

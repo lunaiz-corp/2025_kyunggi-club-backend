@@ -13,11 +13,15 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
+import { FastifyReply } from 'fastify'
+
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
 import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
 
 import PassHashResponseDto from './dto/response/pass-hash.response.dto'
 import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
+
+import { ApplyEntity } from 'src/common/repository/entity/apply.entity'
 
 import { ApplyService } from './apply.service'
 import { AuthGuard } from 'src/auth/auth.guard'
@@ -35,7 +39,7 @@ export class ApplyController {
     description: '실제 입력된 지원서를 업로드합니다.',
   })
   async createApplication(@Body() body: SubmitApplicationRequestDto) {
-    return this.applyService.createApplication(body)
+    await this.applyService.createApplication(body)
   }
 
   @Get('status/:id')
@@ -43,8 +47,10 @@ export class ApplyController {
     summary: '지원서 상태 조회',
     description: '지원서를 조회합니다.',
   })
-  async retrieveApplicationStatus(@Param('id') id: number) {
-    return this.applyService.retrieveApplicationStatus(id)
+  async retrieveApplicationStatus(
+    @Param('id') id: number,
+  ): Promise<ApplyEntity[]> {
+    return await this.applyService.retrieveApplicationStatus(id)
   }
 
   @Get(':club')
@@ -54,8 +60,10 @@ export class ApplyController {
     description: '지원서 목록을 조회합니다.',
   })
   @ApiBearerAuth()
-  async retrieveApplicationsList(@Param('club') club: string) {
-    return this.applyService.retrieveApplicationsList(club)
+  async retrieveApplicationsList(
+    @Param('club') club: string,
+  ): Promise<ApplyEntity[]> {
+    return await this.applyService.retrieveApplicationsList(club)
   }
 
   @Post('notification')
@@ -66,7 +74,7 @@ export class ApplyController {
   })
   @ApiBearerAuth()
   async sendBulkNotification() {
-    return this.applyService.sendBulkNotification()
+    return await this.applyService.sendBulkNotification()
   }
 
   @Get(':club/:id')
@@ -79,8 +87,8 @@ export class ApplyController {
   async retrieveApplication(
     @Param('club') club: string,
     @Param('id') id: number,
-  ) {
-    return this.applyService.retrieveApplication(club, id)
+  ): Promise<ApplyEntity> {
+    return await this.applyService.retrieveApplication(club, id)
   }
 
   @Patch(':club/:id')
@@ -95,7 +103,7 @@ export class ApplyController {
     @Param('id') id: number,
     @Body() body: ApplicationStatusMutateRequestDto,
   ) {
-    return this.applyService.updateApplicationStatus(club, id, body)
+    await this.applyService.updateApplicationStatus(club, id, body)
   }
 
   @Post(':club/:id/notification')
@@ -106,7 +114,7 @@ export class ApplyController {
   })
   @ApiBearerAuth()
   async sendNotification(@Param('club') club: string, @Param('id') id: number) {
-    return this.applyService.sendNotification(club, id)
+    return await this.applyService.sendNotification(club, id)
   }
 
   @Put(':club/:id/final-submit')
@@ -115,7 +123,7 @@ export class ApplyController {
     description: '최종 선발 기간에서 최종 지원합니다.',
   })
   async finalSubmit(@Param('club') club: string, @Param('id') id: number) {
-    return this.applyService.finalSubmit(club, id)
+    await this.applyService.finalSubmit(club, id)
   }
 
   @Get('pass/encrypt')
@@ -128,7 +136,7 @@ export class ApplyController {
     @Query('orderId') orderId: string,
     @Query('device') device: 'pc' | 'android' | 'ios',
   ): Promise<PassHashResponseDto> {
-    return this.applyService.getPassHashData(orderId, device)
+    return await this.applyService.getPassHashData(orderId, device)
   }
 
   @Post('pass/callback')
@@ -136,7 +144,10 @@ export class ApplyController {
     summary: 'PASS 본인인증 콜백 처리',
     description: 'PASS 본인인증 콜백을 처리합니다.',
   })
-  async passCallback(@Res() res, @Body() body: PassCallbackRequestDto) {
+  async passCallback(
+    @Res() res: FastifyReply,
+    @Body() body: PassCallbackRequestDto,
+  ) {
     const host =
       process.env.NODE_ENV === 'development'
         ? 'http://macbook:3000'
