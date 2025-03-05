@@ -3,11 +3,11 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Logger,
   Param,
   Patch,
   Put,
-  Req,
   UseGuards,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
@@ -18,18 +18,26 @@ import {
   ClubTemplateEntity,
 } from 'src/common/repository/entity/club.entity'
 
+import { RolesService } from 'src/auth/roles.service'
 import { ClubService } from './club.service'
+
 import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
 import ClubAdminMutateRequestDto from './dto/request/club-admin-mutate.request.dto'
+
 import { MemberEntity } from 'src/common/repository/entity/member.entity'
-import { FastifyRequest } from 'fastify'
+
+import APIException from 'src/common/dto/APIException.dto'
 
 @ApiTags('Club - 동아리 정보 API')
 @Controller('club')
 export class ClubController {
   private readonly logger = new Logger(ClubController.name)
 
-  constructor(private readonly clubService: ClubService) {}
+  constructor(
+    private readonly rolesService: RolesService,
+
+    private readonly clubService: ClubService,
+  ) {}
 
   @Get('')
   @ApiOperation({
@@ -60,7 +68,7 @@ export class ClubController {
     return await this.clubService.retrieveClubApplicationForm(id)
   }
 
-  @Patch(':id/forms')
+  @Patch(':club/forms')
   @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 지원서 템플릿 수정',
@@ -68,24 +76,34 @@ export class ClubController {
   })
   @ApiBearerAuth()
   async updateClubApplicationForm(
-    @Param('id') id: string,
+    @Param('club') club: string,
     @Body() body: ClubTemplateMutateRequestDto[],
   ) {
-    await this.clubService.updateClubApplicationForm(id, body)
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
+    await this.clubService.updateClubApplicationForm(club, body)
   }
 
-  @Get(':id/members')
+  @Get(':club/members')
   @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 관리자 목록 조회',
     description: '동아리 관리자 목록을 조회합니다.',
   })
   @ApiBearerAuth()
-  async retrieveClubAdmins(@Param('id') id: string): Promise<MemberEntity[]> {
-    return await this.clubService.retrieveClubAdmins(id)
+  async retrieveClubAdmins(
+    @Param('club') club: string,
+  ): Promise<(MemberEntity & { club: string[] })[]> {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
+    return await this.clubService.retrieveClubAdmins(club)
   }
 
-  @Put(':id/members')
+  @Put(':club/members')
   @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 관리자 추가',
@@ -93,14 +111,21 @@ export class ClubController {
   })
   @ApiBearerAuth()
   async addClubAdmin(
-    @Req() req: FastifyRequest & { user: MemberEntity },
-    @Param('id') id: string,
+    @Param('club') club: string,
     @Body() body: ClubAdminMutateRequestDto,
   ) {
-    await this.clubService.addClubAdmin(req.user, id, body)
+    if (club === 'global') {
+      if (!this.rolesService.canRootActivate()) {
+        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+      }
+    } else if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
+    await this.clubService.addClubAdmin(club, body)
   }
 
-  @Delete(':id/members')
+  @Delete(':club/members')
   @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 동아리 관리자 삭제',
@@ -120,9 +145,13 @@ export class ClubController {
     },
   })
   async deleteClubAdmin(
-    @Param('id') id: string,
+    @Param('club') club: string,
     @Body() body: { email: string },
   ) {
-    await this.clubService.deleteClubAdmin(id, body.email)
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
+    await this.clubService.deleteClubAdmin(club, body.email)
   }
 }

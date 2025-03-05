@@ -7,7 +7,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Not, Repository } from 'typeorm'
 
 import { Resend } from 'resend'
 
@@ -21,6 +21,7 @@ import {
 import {
   MemberEntity,
   MemberPermission,
+  MemberRole,
 } from 'src/common/repository/entity/member.entity'
 
 import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
@@ -118,33 +119,30 @@ export class ClubService {
     )
   }
 
-  async retrieveClubAdmins(id: string): Promise<MemberEntity[]> {
-    const cachedAdmins = await this.cacheManager.get<MemberEntity[]>(
-      `admin:${id}`,
-    )
+  async retrieveClubAdmins(
+    id: string,
+  ): Promise<(MemberEntity & { club: string[] })[]> {
+    const cachedAdmins = await this.cacheManager.get<
+      (MemberEntity & { club: string[] })[]
+    >(`admin:${id}`)
 
     if (cachedAdmins) {
       return cachedAdmins
     }
 
     const admins = await this.memberRepository.find({
-      where: { club: { id } },
+      where: { club: { id }, role: Not(MemberRole.OWNER) },
+      select: ['email', 'name', 'phone', 'role'],
     })
 
     await this.cacheManager.set(`admin:${id}`, admins, 3600 * 1000)
 
-    return admins
+    return admins as (MemberEntity & {
+      club: string[]
+    })[]
   }
 
-  async addClubAdmin(
-    user: MemberEntity,
-    id: string,
-    data: ClubAdminMutateRequestDto,
-  ) {
-    if (!user.club.map((x) => x.id).includes(id)) {
-      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
-    }
-
+  async addClubAdmin(id: string, data: ClubAdminMutateRequestDto) {
     await this.cacheManager.del(`admin:${id}`)
 
     const randomPincode = this.nanoid(6)

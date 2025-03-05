@@ -8,12 +8,13 @@ import {
 
 import { ScheduleController } from './schedule.controller'
 import { ScheduleService } from './schedule.service'
+import { RolesService } from 'src/auth/roles.service'
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ScheduleEntity, OperationScheduleEntity]),
   ],
   controllers: [ScheduleController],
-  providers: [ScheduleService],
+  providers: [ScheduleService, RolesService],
 })
 export class ScheduleModule {}

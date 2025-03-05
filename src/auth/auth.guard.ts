@@ -31,13 +31,13 @@ export class AuthGuard implements CanActivate {
           sub: string
           iat: number
           exp: number
-        } & Omit<MemberEntity, 'email'>
+        } & Omit<MemberEntity & { club: string[] }, 'email'>
       >(token, {
         secret: process.env.JWT_SECRET,
       })
 
       const iat = new Date().getTime() / 1000
-      if (parsedToken && parsedToken.iat > iat && parsedToken.exp < iat) {
+      if (parsedToken && parsedToken.iat < iat && parsedToken.exp > iat) {
         const { sub, iat: _, exp: __, ...user } = parsedToken
         request['user'] = { ...user, email: sub }
       } else {

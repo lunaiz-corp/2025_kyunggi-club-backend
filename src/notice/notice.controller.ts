@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Logger,
   Param,
   Patch,
@@ -17,12 +18,19 @@ import { AuthGuard } from 'src/auth/auth.guard'
 import { NoticeService } from './notice.service'
 import NoticeMutateRequestDto from './dto/request/notice-mutate.request.dto'
 
+import { RolesService } from 'src/auth/roles.service'
+import APIException from 'src/common/dto/APIException.dto'
+
 @ApiTags('Notice - 공지사항 관리 API')
 @Controller('notice')
 export class NoticeController {
   private readonly logger = new Logger(NoticeController.name)
 
-  constructor(private readonly noticeService: NoticeService) {}
+  constructor(
+    private readonly rolesService: RolesService,
+
+    private readonly noticeService: NoticeService,
+  ) {}
 
   @Get(':board')
   @ApiOperation({
@@ -58,6 +66,10 @@ export class NoticeController {
     @Param('board') board: string,
     @Body() data: NoticeMutateRequestDto,
   ) {
+    if (!this.rolesService.canRootActivate()) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     await this.noticeService.createNotice(board, data)
   }
 
@@ -73,6 +85,10 @@ export class NoticeController {
     @Param('id') id: number,
     @Body() data: NoticeMutateRequestDto,
   ): Promise<void> {
+    if (!this.rolesService.canRootActivate()) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     await this.noticeService.updateNotice(board, id, data)
   }
 
@@ -87,6 +103,10 @@ export class NoticeController {
     @Param('board') board: string,
     @Param('id') id: number,
   ): Promise<void> {
+    if (!this.rolesService.canRootActivate()) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     await this.noticeService.deleteNotice(board, id)
   }
 }

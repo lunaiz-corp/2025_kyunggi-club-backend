@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Logger,
   Param,
   Patch,
@@ -24,14 +25,20 @@ import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
 import { ApplyEntity } from 'src/common/repository/entity/apply.entity'
 
 import { ApplyService } from './apply.service'
+
 import { AuthGuard } from 'src/auth/auth.guard'
+import { RolesService } from 'src/auth/roles.service'
+import APIException from 'src/common/dto/APIException.dto'
 
 @ApiTags('Apply - 지원서 제출, 관리 API')
 @Controller('apply')
 export class ApplyController {
   private readonly logger = new Logger(ApplyController.name)
 
-  constructor(private readonly applyService: ApplyService) {}
+  constructor(
+    private readonly rolesService: RolesService,
+    private readonly applyService: ApplyService,
+  ) {}
 
   @Get('pass/encrypt')
   @ApiOperation({
@@ -120,6 +127,10 @@ export class ApplyController {
   async retrieveApplicationsList(
     @Param('club') club: string,
   ): Promise<ApplyEntity[]> {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     return await this.applyService.retrieveApplicationsList(club)
   }
 
@@ -145,6 +156,10 @@ export class ApplyController {
     @Param('club') club: string,
     @Param('id') id: number,
   ): Promise<ApplyEntity> {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     return await this.applyService.retrieveApplication(club, id)
   }
 
@@ -160,6 +175,10 @@ export class ApplyController {
     @Param('id') id: number,
     @Body() body: ApplicationStatusMutateRequestDto,
   ) {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     await this.applyService.updateApplicationStatus(club, id, body)
   }
 
@@ -171,6 +190,10 @@ export class ApplyController {
   })
   @ApiBearerAuth()
   async sendNotification(@Param('club') club: string, @Param('id') id: number) {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     return await this.applyService.sendNotification(club, id)
   }
 

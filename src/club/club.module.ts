@@ -9,12 +9,13 @@ import { MemberEntity } from 'src/common/repository/entity/member.entity'
 
 import { ClubController } from './club.controller'
 import { ClubService } from './club.service'
+import { RolesService } from 'src/auth/roles.service'
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ClubEntity, ClubTemplateEntity, MemberEntity]),
   ],
   controllers: [ClubController],
-  providers: [ClubService],
+  providers: [ClubService, RolesService],
 })
 export class ClubModule {}

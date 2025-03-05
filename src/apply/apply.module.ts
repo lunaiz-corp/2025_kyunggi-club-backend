@@ -12,6 +12,8 @@ import {
 import { ApplyController } from './apply.controller'
 import { ApplyService } from './apply.service'
 
+import { RolesService } from 'src/auth/roles.service'
+
 @Module({
   imports: [
     HttpModule,
@@ -23,6 +25,6 @@ import { ApplyService } from './apply.service'
     ]),
   ],
   controllers: [ApplyController],
-  providers: [ApplyService],
+  providers: [ApplyService, RolesService],
 })
 export class ApplyModule {}

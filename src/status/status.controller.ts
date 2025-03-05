@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Logger, Patch, UseGuards } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Logger,
+  Patch,
+  UseGuards,
+} from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import { StatusEntity } from 'src/common/repository/entity/status.entity'
@@ -6,12 +14,19 @@ import { AuthGuard } from 'src/auth/auth.guard'
 
 import { StatusService } from './status.service'
 
+import { RolesService } from 'src/auth/roles.service'
+import APIException from 'src/common/dto/APIException.dto'
+
 @ApiTags('Status - 운영 상태 관리 API')
 @Controller('status')
 export class StatusController {
   private readonly logger = new Logger(StatusController.name)
 
-  constructor(private readonly serviceStatus: StatusService) {}
+  constructor(
+    private readonly rolesService: RolesService,
+
+    private readonly serviceStatus: StatusService,
+  ) {}
 
   @Get('')
   @ApiOperation({
@@ -30,6 +45,10 @@ export class StatusController {
   })
   @ApiBearerAuth()
   async updateServiceStatus(@Body() data: StatusEntity) {
+    if (!this.rolesService.canRootActivate()) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     await this.serviceStatus.updateServiceStatus(data)
   }
 }

@@ -53,7 +53,9 @@ export class AuthController {
     description: '현재 로그인 된 계정을 조회합니다.',
   })
   @ApiBearerAuth()
-  getProfile(@Req() req: FastifyRequest & { user: MemberEntity }) {
+  getProfile(
+    @Req() req: FastifyRequest & { user: MemberEntity & { club: string[] } },
+  ) {
     return req.user
   }
 }

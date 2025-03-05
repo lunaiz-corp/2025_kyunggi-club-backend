@@ -1,10 +1,13 @@
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository, UpdateResult, DeleteResult } from 'typeorm'
+
+import { RolesService } from 'src/auth/roles.service'
+import APIException from 'src/common/dto/APIException.dto'
 
 import {
   ScheduleEntity,
@@ -20,6 +23,8 @@ export class ScheduleService {
   private readonly logger = new Logger(ScheduleService.name)
 
   constructor(
+    private readonly rolesService: RolesService,
+
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
 
@@ -80,6 +85,10 @@ export class ScheduleService {
 
     const schedule = await this.scheduleRepository.findOne({ where: { id } })
     if (schedule) {
+      if (!this.rolesService.canActivate([schedule.club.id])) {
+        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+      }
+
       return this.scheduleRepository.delete(id)
     }
 
@@ -87,6 +96,10 @@ export class ScheduleService {
       where: { id },
     })
     if (operationSchedule) {
+      if (!this.rolesService.canRootActivate()) {
+        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+      }
+
       return this.operationScheduleRepository.delete(id)
     }
   }

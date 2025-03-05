@@ -42,6 +42,7 @@ export class AuthService {
       where: {
         email,
       },
+      relations: ['club'],
     })
 
     if (!user) {
@@ -70,13 +71,19 @@ export class AuthService {
       )
     }
 
-    const { email: _, ...tokenUser } = user
+    const { email: _, password: __, club, ...tokenUser } = user
 
     return {
-      accessToken: await this.jwtService.signAsync({
-        sub: user.email,
-        ...tokenUser,
-      }),
+      accessToken: await this.jwtService.signAsync(
+        {
+          sub: user.email,
+          club: user.club.map((x) => x.id),
+          ...tokenUser,
+        },
+        {
+          secret: process.env.JWT_SECRET,
+        },
+      ),
     }
   }
 
@@ -104,7 +111,7 @@ export class AuthService {
 
     return this.memberRepository.findOne({
       where: { email: savedRequest.email },
-      select: ['email', 'name', 'phone', 'role', 'permission', 'club'],
+      select: ['email', 'name', 'phone', 'role', 'permission'],
     })
   }
 }
