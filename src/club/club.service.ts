@@ -54,6 +54,12 @@ export class ClubService {
     this.resend = new Resend(process.env.RESEND_API_KEY)
   }
 
+  private readonly priorityByRole = {
+    [MemberRole.CLUB_LEADER]: 0,
+    [MemberRole.CLUB_DEPUTY]: 1,
+    [MemberRole.CLUB_MEMBER]: 2,
+  }
+
   async retrieveClubList() {
     const cachedClubs = await this.cacheManager.get<ClubEntity[]>('club')
 
@@ -135,11 +141,15 @@ export class ClubService {
       select: ['email', 'name', 'phone', 'role'],
     })
 
-    await this.cacheManager.set(`admin:${id}`, admins, 3600 * 1000)
-
-    return admins as (MemberEntity & {
+    // 직급 단위로 sorting
+    const sortedAdmins = admins.sort((a, b) => {
+      return this.priorityByRole[a.role] - this.priorityByRole[b.role]
+    }) as (MemberEntity & {
       club: string[]
     })[]
+
+    await this.cacheManager.set(`admin:${id}`, sortedAdmins, 3600 * 1000)
+    return sortedAdmins
   }
 
   async addClubAdmin(id: string, data: ClubAdminMutateRequestDto) {
