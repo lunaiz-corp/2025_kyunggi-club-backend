@@ -48,24 +48,24 @@ export class ClubController {
     return await this.clubService.retrieveClubList()
   }
 
-  @Get(':id')
+  @Get(':club')
   @ApiOperation({
     summary: '동아리 정보 조회',
     description: '동아리 소개 페이지용 정보를 조회합니다.',
   })
-  async retrieveClubInfo(@Param('id') id: string): Promise<ClubEntity> {
-    return await this.clubService.retrieveClubInfo(id)
+  async retrieveClubInfo(@Param('club') club: string): Promise<ClubEntity> {
+    return await this.clubService.retrieveClubInfo(club)
   }
 
-  @Get(':id/forms')
+  @Get(':club/forms')
   @ApiOperation({
     summary: '동아리 지원서 템플릿 조회',
     description: '동아리 지원서 양식을 조회합니다.',
   })
   async retrieveClubApplicationForm(
-    @Param('id') id: string,
+    @Param('club') club: string,
   ): Promise<ClubTemplateEntity[]> {
-    return await this.clubService.retrieveClubApplicationForm(id)
+    return await this.clubService.retrieveClubApplicationForm(club)
   }
 
   @Patch(':club/forms')

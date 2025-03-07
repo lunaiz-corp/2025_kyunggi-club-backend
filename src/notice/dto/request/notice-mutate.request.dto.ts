@@ -11,12 +11,6 @@ export class NoticeMutateRequestDto {
    */
 
   content: string
-
-  /**
-   * 공지사항 첨부파일 목록
-   * @example ['notice/1/filename.png']
-   */
-  files: string[]
 }
 
 export default NoticeMutateRequestDto

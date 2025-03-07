@@ -75,7 +75,6 @@ export class NoticeService {
       category: { id: board },
       title: data.title,
       content: data.content,
-      files: data.files,
     })
   }
 
@@ -91,7 +90,6 @@ export class NoticeService {
       {
         title: data.title,
         content: data.content,
-        files: data.files,
       },
     )
   }

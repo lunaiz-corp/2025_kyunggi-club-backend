@@ -30,11 +30,11 @@ export class StatusService {
       return cachedStatus
     }
 
-    let status = await this.statusRepository.findOne({})
+    let status = (await this.statusRepository.find())[0]
 
     if (!status) {
       await this.statusRepository.save({ status: ServiceStatus.OPEN })
-      status = await this.statusRepository.findOne({})
+      status = (await this.statusRepository.find())[0]
     }
 
     await this.cacheManager.set('status', status, 1800 * 1000)

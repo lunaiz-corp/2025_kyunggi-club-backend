@@ -55,7 +55,7 @@ export class AuthController {
   @ApiBearerAuth()
   getProfile(
     @Req() req: FastifyRequest & { user: MemberEntity & { club: string[] } },
-  ) {
+  ): MemberEntity & { club: string[] } {
     return req.user
   }
 }

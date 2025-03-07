@@ -22,13 +22,13 @@ export class ScheduleMutateRequestDto {
    * @example 'list'
    */
 
-  club: string
+  club?: string
 
   /**
    * 스케쥴 일정
    * @example '2021-01-01T00:00:00.000Z'
    */
-  timestamp: Date
+  start_at: Date
 }
 
 export class OperationScheduleMutateRequestDto {

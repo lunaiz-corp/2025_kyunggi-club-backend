@@ -8,15 +8,21 @@ import {
   Param,
   Patch,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 
-import { ScheduleEntity } from 'src/common/repository/entity/schedule.entity'
+import {
+  OperationScheduleEntity,
+  ScheduleEntity,
+} from 'src/common/repository/entity/schedule.entity'
 import { AuthGuard } from 'src/auth/auth.guard'
 
 import { ScheduleService } from './schedule.service'
-import ScheduleMutateRequestDto from './dto/request/schedule-mutate.request.dto'
+import ScheduleMutateRequestDto, {
+  OperationScheduleMutateRequestDto,
+} from './dto/request/schedule-mutate.request.dto'
 
 import { RolesService } from 'src/auth/roles.service'
 import APIException from 'src/common/dto/APIException.dto'
@@ -34,11 +40,20 @@ export class ScheduleController {
 
   @Get('')
   @ApiOperation({
-    summary: '모든 일정 조회',
-    description: '모든 일정을 조회합니다.',
+    summary: '일정 목록 조회',
+    description: '일정 목록을 조회합니다.',
   })
-  async retrieveSchedulesList(): Promise<ScheduleEntity[]> {
-    return await this.scheduleService.retrieveSchedulesList()
+  async retrieveSchedulesList(
+    @Query('type') type?: string,
+    @Query('club') club?: string,
+  ): Promise<
+    (
+      | ScheduleEntity
+      | OperationScheduleEntity
+      | (ScheduleEntity & OperationScheduleEntity)
+    )[]
+  > {
+    return await this.scheduleService.retrieveSchedulesList(type, club)
   }
 
   @Put('')
@@ -48,12 +63,28 @@ export class ScheduleController {
     description: '새로운 일정을 추가합니다.',
   })
   @ApiBearerAuth()
-  async createSchedule(@Body() data: ScheduleMutateRequestDto) {
-    if (!this.rolesService.canActivate([data.club])) {
+  async createSchedule(
+    @Query('type') type: 'SCHEDULE' | 'OPERATION',
+    @Body() data: ScheduleMutateRequestDto | OperationScheduleMutateRequestDto,
+  ) {
+    if (type.toUpperCase() === 'OPERATION') {
+      if (!this.rolesService.canRootActivate()) {
+        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+      }
+
+      await this.scheduleService.createOperationSchedule(
+        data as OperationScheduleMutateRequestDto,
+      )
+      return
+    }
+
+    if (
+      !this.rolesService.canActivate([(data as ScheduleMutateRequestDto).club])
+    ) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
-    await this.scheduleService.createSchedule(data)
+    await this.scheduleService.createSchedule(data as ScheduleMutateRequestDto)
   }
 
   @Patch(':id')
@@ -66,12 +97,9 @@ export class ScheduleController {
   @ApiParam({ name: 'id', example: 'b1e7dea0-2060-4f0a-835a-a51636fa1926' })
   async updateSchedule(
     @Param('id') id: string,
-    @Body() data: ScheduleMutateRequestDto,
+    @Body() data: ScheduleMutateRequestDto | OperationScheduleMutateRequestDto,
   ) {
-    if (!this.rolesService.canActivate([data.club])) {
-      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
-    }
-
+    // 권한 관리 로직: service 안에 들어있음
     await this.scheduleService.updateSchedule(id, data)
   }
 

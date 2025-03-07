@@ -39,7 +39,7 @@ export class NoticeController {
   })
   async retrieveNoticesList(
     @Param('board') board: string,
-  ): Promise<NoticeEntity[]> {
+  ): Promise<Omit<NoticeEntity, 'category'>[]> {
     return await this.noticeService.retrieveNoticesList(board)
   }
 
@@ -51,7 +51,7 @@ export class NoticeController {
   async retrieveNotice(
     @Param('board') board: string,
     @Param('id') id: number,
-  ): Promise<NoticeEntity> {
+  ): Promise<Omit<NoticeEntity, 'category'>> {
     return await this.noticeService.retrieveNotice(board, id)
   }
 

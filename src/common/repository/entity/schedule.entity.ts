@@ -15,6 +15,12 @@ export enum ScheduleCategory {
   APPLICATION_START = 'APPLICATION_START',
   APPLICATION_END = 'APPLICATION_END',
 
+  // 지필 일정
+  EXAMINATION = 'EXAMINATION',
+
+  // 면접 일정
+  INTERVIEW = 'INTERVIEW',
+
   ETC = 'ETC',
 }
 
@@ -52,7 +58,7 @@ export class ScheduleEntity extends BaseEntity {
   club: ClubEntity
 
   @ApiProperty({ type: Date })
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamp with time zone' })
   start_at: Date
 
   @ApiProperty({ type: Date })
@@ -81,7 +87,7 @@ export class OperationScheduleEntity extends BaseEntity {
   category: OperationScheduleCategory
 
   @ApiProperty({ type: Date })
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamp with time zone' })
   start_at: Date
 
   @ApiProperty({ type: Date })

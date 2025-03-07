@@ -42,10 +42,6 @@ export class NoticeEntity extends BaseEntity {
   @Column({ type: 'text' })
   content: string
 
-  @ApiProperty({ type: [String], isArray: true, required: false })
-  @Column({ type: 'text', array: true, nullable: true })
-  files: string[]
-
   @ApiProperty({ type: Date })
   @Column({
     type: 'timestamp with time zone',
