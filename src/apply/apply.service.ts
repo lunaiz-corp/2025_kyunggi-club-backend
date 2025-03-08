@@ -101,8 +101,8 @@ export class ApplyService {
         )
       : undefined
 
-    const alreadyApplied = await this.applyRepository.findOne({
-      where: { student: { id: userInfo.id } },
+    const alreadyApplied = await this.studentRepository.findOne({
+      where: { id: userInfo.id },
     })
 
     if (alreadyApplied) {
@@ -351,7 +351,7 @@ export class ApplyService {
       },
     })
 
-    if (!application) {
+    if (type === 'MANUAL' && !application) {
       throw new APIException(403, '권한이 없습니다.')
     }
 

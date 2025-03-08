@@ -6,7 +6,7 @@ export class ClubTemplateMutateRequestDto {
    * 질문지 index
    * @example 1
    */
-  id: number
+  id: string
 
   /**
    * 질문

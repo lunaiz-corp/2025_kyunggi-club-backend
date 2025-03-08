@@ -108,12 +108,14 @@ export class ClubService {
     const form = await this.clubTemplateRepository.find({
       where: { club: { id } },
     })
-    await this.cacheManager.set(`template:${id}`, form, 3600 * 1000)
 
-    return form.map((template) => ({
+    const formatted = form.map((template) => ({
       ...template,
-      id: Number(template.id.split('-')[1]),
+      id: Number(template.id.replaceAll(`${id}-`, '')),
     })) as (ClubTemplateEntity & { id: number })[]
+
+    await this.cacheManager.set(`template:${id}`, formatted, 3600 * 1000)
+    return formatted
   }
 
   async updateClubApplicationForm(
@@ -126,7 +128,9 @@ export class ClubService {
     return this.clubTemplateRepository.insert(
       data.map((template) => ({
         ...template,
-        id: `${id}-${template.id}`,
+        id: String(template.id).startsWith(`${id}-`)
+          ? id
+          : `${id}-${template.id}`,
         club: { id },
       })),
     )
