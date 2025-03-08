@@ -4,6 +4,7 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   ManyToOne,
   PrimaryColumn,
@@ -89,6 +90,10 @@ export class ApplyEntity extends BaseEntity {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: number
 
+  @ApiProperty({ type: String })
+  @Column({ type: 'text' })
+  password: string
+
   @ApiProperty({ type: () => StudentEntity })
   @ManyToOne(() => StudentEntity, (student) => student.id, {
     onDelete: 'SET NULL',
@@ -118,7 +123,7 @@ export class ApplyEntity extends BaseEntity {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
-  @JoinColumn({ name: 'answer_id', referencedColumnName: 'id' })
+  @JoinTable()
   answers: FormAnswerEntity[]
 
   @ApiProperty({ type: String, enum: Object.values(CurrentStatus) })

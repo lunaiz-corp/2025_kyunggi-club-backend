@@ -8,8 +8,11 @@ import { Repository } from 'typeorm'
 import fs from 'node:fs'
 import crypto from 'node:crypto'
 
-import { firstValueFrom } from 'rxjs'
+import type { AxiosError } from 'axios'
+import { catchError, firstValueFrom } from 'rxjs'
 import { Cache } from 'cache-manager'
+
+import { customAlphabet } from 'nanoid'
 
 import {
   StudentEntity,
@@ -25,6 +28,8 @@ import PassCallbackResponseDto from './dto/response/pass-callback.response.dto'
 
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
 import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
+import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
+import ApplicationStatusRetrieveResponseDto from './dto/response/application-status-retrieve.response.dto'
 
 const KCP_API_CONSTANTS = {
   SITECD: process.env.NODE_ENV === 'development' ? 'AO0QE' : 'AKYT9',
@@ -41,6 +46,8 @@ const KCP_API_CONSTANTS = {
 @Injectable()
 export class ApplyService {
   private readonly logger = new Logger(ApplyService.name)
+
+  private readonly nanoid: (size?: number) => string
 
   constructor(
     @Inject(CACHE_MANAGER)
@@ -59,7 +66,9 @@ export class ApplyService {
     private readonly applyRepository: Repository<ApplyEntity>,
 
     private readonly httpService: HttpService,
-  ) {}
+  ) {
+    this.nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 6)
+  }
 
   async createApplication(data: SubmitApplicationRequestDto) {
     const { userInfo, parentInfo, formAnswers } = data
@@ -99,24 +108,75 @@ export class ApplyService {
       di: parentPassData ? (parentPassData.di_url as string) : undefined,
     })
 
+    const password = this.nanoid(6)
+
+    const databaseQuery = {
+      password,
+
+      student: { id: userInfo.id },
+      parent: { phone: parentInfo.phone },
+
+      status: CurrentStatus.WAITING,
+    }
+
     formAnswers.forEach(async (answers) => {
       answers.answers.forEach(async (answer) => {
         await this.formAnswerRepository.insert({
-          id: `${userInfo.id}-${answer.id}`,
+          id: `${userInfo.id}-${answers.club}-${answer.id}`,
           answer: answer.answer,
           files: answer.files,
         })
       })
+
+      await this.applyRepository.insert({
+        ...databaseQuery,
+        club: { id: answers.club },
+        answers: answers.answers.map((answer) => ({
+          id: `${userInfo.id}-${answers.club}-${answer.id}`,
+        })),
+      })
     })
 
-    await this.applyRepository.insert({
-      student: { id: userInfo.id },
-      parent: { phone: parentInfo.phone },
-      answers: formAnswers.map((answers) => ({
-        id: `${userInfo.id}-${answers.club}`,
-      })),
-      status: CurrentStatus.WAITING,
-    })
+    try {
+      await this.sendNotification(
+        userInfo.id,
+        formAnswers[0].club,
+        'SYSTEM',
+        `${userInfo.name} 님의 2025학년도 경기고등학교 이공계 동아리 지원서가 접수되었습니다.
+
+이공계동아리연합 선발 사이트에서 본인의 지원 상태, 지원서 확인을 위해서 위 접수 번호를 꼭 기억하고, 타인에게 노출되지 않도록 유의하세요.
+(접수 번호가 없을 경우 지원서 확인, 지필/면접 합격자 확인, 최종 등록 절차 진행 불가)
+
+** 접수 번호: ${password}
+
+본인, 혹은 본인의 자녀가 경기고등학교 이공계 동아리 접수를 하지 않은 경우, 고객센터로 문의해 주세요.`,
+      )
+    } catch (error) {
+      this.logger.error(error)
+
+      await this.httpService.axiosRef.post(process.env.DISCORD_WEBHOOK_URL, {
+        content: `**[알림]** ${userInfo.name} 님의 지원서 알림톡 전송에 실패했습니다.`,
+        embeds: [
+          {
+            title: '발송 시도 정보',
+            fields: [
+              {
+                name: '학생 정보',
+                value: `학번: ${userInfo.id}\n이름: ${userInfo.name}\n전화번호: ${userInfo.phone}`,
+              },
+              {
+                name: '지원 동아리',
+                value: formAnswers.map((answers) => answers.club).join(', '),
+              },
+              {
+                name: '접수 번호',
+                value: password,
+              },
+            ],
+          },
+        ],
+      })
+    }
   }
 
   async retrieveApplicationsList(club: string) {
@@ -127,17 +187,60 @@ export class ApplyService {
     return applications
   }
 
-  async sendBulkNotification() {}
-
-  async retrieveApplicationStatus(id: number) {
+  async sendBulkNotification(
+    ids: number[],
+    club: string,
+    type: 'SYSTEM' | 'MANUAL',
+    content: string,
+  ) {
     const applications = await this.applyRepository.find({
-      where: { student: { id } },
+      where: {
+        student: ids.map((id) => ({ id })),
+        club: { id: club },
+      },
     })
 
-    return applications
+    const { data: alimTalk } = await firstValueFrom(
+      this.httpService
+        .post(
+          `https://api-alimtalk.cloud.toast.com/friendtalk/v2.4/appkeys/${process.env.KAKAO_APP_KEY}/messages`,
+          {
+            senderKey: process.env.KAKAO_SENDER_KEY,
+            recipientList: applications.map((application) => ({
+              recipientNo: application.student.phone,
+              content,
+              buttons:
+                type === 'SYSTEM'
+                  ? [
+                      {
+                        ordering: 1,
+                        type: 'WL',
+                        name: '지원서 상태 확인',
+                        linkMo: 'https://kyunggi.club/apply/status',
+                        linkPc: 'https://kyunggi.club/apply/status',
+                      },
+                    ]
+                  : [],
+              resendParameter: {
+                isResend: true,
+                resendSendNo: process.env.KAKAO_SENDER_PHONE,
+              },
+              isAd: false,
+            })),
+          },
+        )
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(error.response.data)
+            throw new APIException(500, '알림톡 전송에 실패했습니다.')
+          }),
+        ),
+    )
+
+    return alimTalk
   }
 
-  async retrieveApplication(club: string, id: number) {
+  async retrieveApplication(id: number, club: string) {
     const application = await this.applyRepository.findOne({
       where: {
         student: { id },
@@ -146,6 +249,49 @@ export class ApplyService {
     })
 
     return application
+  }
+
+  async retrieveApplicationForStudent(
+    id: number,
+    body: ApplicationStatusRetrieveRequestDto,
+  ): Promise<ApplicationStatusRetrieveResponseDto> {
+    const application = await this.applyRepository.findOne({
+      where: {
+        student: { id, name: body.studentName },
+        password: body.password,
+      },
+    })
+
+    if (!application) {
+      throw new APIException(404, '존재하지 않는 지원서입니다.')
+    }
+
+    const student = await this.studentRepository.findOne({
+      where: { id, name: body.studentName },
+      select: ['id', 'name', 'phone'],
+    })
+
+    const applications = await this.applyRepository.find({
+      where: {
+        student: { id, name: body.studentName },
+        password: body.password,
+      },
+    })
+
+    return {
+      userInfo: student,
+
+      applingClubs: applications.map((application) => application.club.name),
+      currentStatus: applications.map((application) => ({
+        club: application.club,
+        status: application.status,
+      })),
+
+      formAnswers: applications.map((application) => ({
+        club: application.club,
+        answers: application.answers,
+      })),
+    }
   }
 
   async updateApplicationStatus(
@@ -175,7 +321,25 @@ export class ApplyService {
     )
   }
 
-  async sendNotification(club: string, id: number) {}
+  async sendNotification(
+    id: number,
+    club: string,
+    type: 'SYSTEM' | 'MANUAL',
+    content: string,
+  ) {
+    const application = await this.applyRepository.findOne({
+      where: {
+        student: { id },
+        club: { id: club },
+      },
+    })
+
+    if (!application) {
+      throw new APIException(403, '권한이 없습니다.')
+    }
+
+    return this.sendBulkNotification([id], club, type, content)
+  }
 
   async finalSubmit(club: string, id: number) {
     const application = await this.applyRepository.findOne({

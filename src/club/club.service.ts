@@ -33,7 +33,7 @@ import APIException from 'src/common/dto/APIException.dto'
 export class ClubService {
   private readonly logger = new Logger(ClubService.name)
 
-  private readonly nanoid
+  private readonly nanoid: (size?: number) => string
   private readonly resend: Resend
 
   constructor(

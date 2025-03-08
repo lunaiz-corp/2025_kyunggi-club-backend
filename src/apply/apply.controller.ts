@@ -22,6 +22,14 @@ import ApplicationStatusMutateRequestDto from './dto/request/application-status-
 import PassHashResponseDto from './dto/response/pass-hash.response.dto'
 import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
 
+import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
+import ApplicationStatusRetrieveResponseDto from './dto/response/application-status-retrieve.response.dto'
+
+import {
+  SendBulkNotificationRequestDto,
+  SendNotificationRequestDto,
+} from './dto/request/send-notification.request.dto'
+
 import { ApplyEntity } from 'src/common/repository/entity/apply.entity'
 
 import { ApplyService } from './apply.service'
@@ -64,7 +72,7 @@ export class ApplyController {
   ) {
     const host =
       process.env.NODE_ENV === 'development'
-        ? 'http://macbook:3000'
+        ? 'http://samsung:3000'
         : 'https://kyunggi.club'
 
     if (body.res_cd !== '0000') {
@@ -106,15 +114,18 @@ export class ApplyController {
     await this.applyService.createApplication(body)
   }
 
-  @Get('status/:id')
+  @Post('student/:id')
+  @UseGuards(AuthGuard)
   @ApiOperation({
-    summary: '지원서 상태 조회',
+    summary: '지원서 조회 (학생용)',
     description: '지원서를 조회합니다.',
   })
-  async retrieveApplicationStatus(
+  @ApiBearerAuth()
+  async retrieveApplicationForStudent(
     @Param('id') id: number,
-  ): Promise<ApplyEntity[]> {
-    return await this.applyService.retrieveApplicationStatus(id)
+    @Body() body: ApplicationStatusRetrieveRequestDto,
+  ): Promise<ApplicationStatusRetrieveResponseDto> {
+    return await this.applyService.retrieveApplicationForStudent(id, body)
   }
 
   @Get(':club')
@@ -134,15 +145,27 @@ export class ApplyController {
     return await this.applyService.retrieveApplicationsList(club)
   }
 
-  @Post('notification')
+  @Post(':club/notification')
   @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '(ADMIN) 지원서 일괄 알림톡 발송',
     description: '지원서에 대한 일괄 알림톡을 전송합니다.',
   })
   @ApiBearerAuth()
-  async sendBulkNotification() {
-    return await this.applyService.sendBulkNotification()
+  async sendBulkNotification(
+    @Param('club') club: string,
+    @Body() body: SendBulkNotificationRequestDto,
+  ) {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
+    return await this.applyService.sendBulkNotification(
+      body.ids,
+      club,
+      'MANUAL',
+      body.content,
+    )
   }
 
   @Get(':club/:id')
@@ -160,7 +183,7 @@ export class ApplyController {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
-    return await this.applyService.retrieveApplication(club, id)
+    return await this.applyService.retrieveApplication(id, club)
   }
 
   @Patch(':club/:id')
@@ -189,12 +212,21 @@ export class ApplyController {
     description: '지원서에 대한 개별 알림톡을 전송합니다.',
   })
   @ApiBearerAuth()
-  async sendNotification(@Param('club') club: string, @Param('id') id: number) {
+  async sendNotification(
+    @Param('club') club: string,
+    @Param('id') id: number,
+    @Body() body: SendNotificationRequestDto,
+  ) {
     if (!this.rolesService.canActivate([club])) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
-    return await this.applyService.sendNotification(club, id)
+    return await this.applyService.sendNotification(
+      id,
+      club,
+      'MANUAL',
+      body.content,
+    )
   }
 
   @Put(':club/:id/final-submit')
