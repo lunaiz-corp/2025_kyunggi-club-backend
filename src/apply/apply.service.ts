@@ -147,12 +147,10 @@ export class ApplyService {
         })
       })
 
+      // TODO: 데이터베이스 꼬임... id값이 연동이 안되어서 추후에는 formAnswerRepository에서 직접 가져와야 하는 상황임.
       await this.applyRepository.insert({
         ...databaseQuery,
         club: { id: answers.club },
-        answers: answers.answers.map((answer) => ({
-          id: `${userInfo.id}-${answers.club}-${answer.id}`,
-        })),
       })
     })
 
@@ -274,14 +272,15 @@ export class ApplyService {
     id: number,
     body: ApplicationStatusRetrieveRequestDto,
   ) {
-    const application = await this.applyRepository.findOne({
+    const applications = await this.applyRepository.find({
       where: {
         student: { id, name: body.studentName },
         password: body.password,
       },
+      relations: ['club'],
     })
 
-    if (!application) {
+    if (applications.length === 0) {
       throw new APIException(404, '존재하지 않는 지원서입니다.')
     }
 
@@ -290,25 +289,30 @@ export class ApplyService {
       select: ['id', 'name', 'phone'],
     })
 
-    const applications = await this.applyRepository.find({
-      where: {
-        student: { id, name: body.studentName },
-        password: body.password,
-      },
-    })
+    const answers = (await this.formAnswerRepository.find()).filter((answer) =>
+      answer.id.startsWith(`${student.id}-`),
+    )
 
     return {
       userInfo: student,
 
-      applingClubs: applications.map((application) => application.club.name),
+      applingClubs: applications.map((application) => application.club.id),
       currentStatus: applications.map((application) => ({
-        club: application.club.name,
+        club: application.club.id,
         status: application.status,
       })),
 
       formAnswers: applications.map((application) => ({
-        club: application.club.name,
-        answers: application.answers,
+        club: application.club.id,
+        answers: answers
+          .filter((answer) =>
+            answer.id.startsWith(`${student.id}-${application.club.id}`),
+          )
+          .map((answer) => ({
+            ...answer,
+            id: Number(answer.id.split('-')[2]),
+          }))
+          .sort((a, b) => a.id - b.id),
       })),
     }
   }

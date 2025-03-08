@@ -4,8 +4,6 @@ import {
   Column,
   Entity,
   JoinColumn,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   PrimaryColumn,
   PrimaryGeneratedColumn,
@@ -13,9 +11,18 @@ import {
 import { ClubEntity } from './club.entity'
 
 export enum CurrentStatus {
-  PASSED = 'PASSED',
   WAITING = 'WAITING',
-  REJECTED = 'REJECTED',
+
+  DOCUMENT_PASSED = 'DOCUMENT_PASSED',
+  EXAM_PASSED = 'EXAM_PASSED',
+  INTERVIEW_PASSED = 'INTERVIEW_PASSED',
+
+  DOCUMENT_REJECTED = 'DOCUMENT_REJECTED',
+  EXAM_REJECTED = 'EXAM_REJECTED',
+  INTERVIEW_REJECTED = 'INTERVIEW_REJECTED',
+
+  FINAL_PASSED = 'PASSED',
+  FINAL_REJECTED = 'REJECTED',
   FINAL_SUBMISSION = 'FINAL_SUBMISSION',
 }
 
@@ -117,14 +124,6 @@ export class ApplyEntity extends BaseEntity {
   })
   @JoinColumn({ name: 'club_id', referencedColumnName: 'id' })
   club: ClubEntity
-
-  @ApiProperty({ type: () => [FormAnswerEntity], isArray: true })
-  @ManyToMany(() => FormAnswerEntity, (rawAnswer) => rawAnswer.id, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinTable()
-  answers: FormAnswerEntity[]
 
   @ApiProperty({ type: String, enum: Object.values(CurrentStatus) })
   @Column({ type: 'enum', enum: Object.values(CurrentStatus) })

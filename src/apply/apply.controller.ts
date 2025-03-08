@@ -123,12 +123,10 @@ export class ApplyController {
   }
 
   @Post('student/:id')
-  @UseGuards(AuthGuard)
   @ApiOperation({
     summary: '지원서 조회 (학생용)',
     description: '지원서를 조회합니다.',
   })
-  @ApiBearerAuth()
   async retrieveApplicationForStudent(
     @Param('id') id: number,
     @Body() body: ApplicationStatusRetrieveRequestDto,
@@ -149,7 +147,7 @@ export class ApplyController {
     formAnswers: {
       club: string
       answers: {
-        id: string
+        id: number
         answer: string
         files: string[]
       }[]
