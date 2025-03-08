@@ -22,7 +22,7 @@ async function bootstrap() {
     new FastifyAdapter({ logger: true }),
   )
 
-  if (process.env.ENABLE_SWAGGER !== '0') {
+  if (process.env.ENABLE_SWAGGER === '1') {
     const config = new DocumentBuilder()
       .setTitle('경기고 이공연 선발 시스템')
       .setDescription(

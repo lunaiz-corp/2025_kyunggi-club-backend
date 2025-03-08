@@ -72,7 +72,9 @@ export class ApplyService {
   async getSelectChance(): Promise<{ [key: string]: number }> {
     // 현재 있는 모든 지원서를 동아리별로 나눠서 개수를 보낸다.
     // 현재 상태는 신경쓰지말고 지원서의 단순 개수만 보자.
-    const applications = await this.applyRepository.find()
+    const applications = await this.applyRepository.find({
+      relations: ['club'],
+    })
 
     const selectChance = applications.reduce((acc, application) => {
       if (!acc[application.club.id]) {
