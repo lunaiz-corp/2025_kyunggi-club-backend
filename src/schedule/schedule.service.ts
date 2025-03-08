@@ -40,13 +40,24 @@ export class ScheduleService {
   ) {}
 
   async retrieveSchedulesList(type?: string): Promise<ScheduleEntity[]> {
-    const allowedCategory = this.types?.[type.toUpperCase()]
+    const allowedCategory = type
+      ? this.types?.[type.toUpperCase()]
+      : new Set([
+          ScheduleCategory.APPLICATION_START,
+          ScheduleCategory.APPLICATION_END,
+          ScheduleCategory.EXAMINATION,
+          ScheduleCategory.INTERVIEW,
+        ])
 
     const schedules = await this.scheduleRepository.find()
 
-    return schedules.filter((schedule) => {
-      return type ? allowedCategory.has(schedule.category) : true
-    })
+    return schedules
+      .filter((schedule) => {
+        return type ? allowedCategory.has(schedule.category) : true
+      })
+      .sort((a, b) => {
+        return a.start_at.getTime() - b.start_at.getTime()
+      })
   }
 
   async createSchedule(data: ScheduleMutateRequestDto): Promise<InsertResult> {
