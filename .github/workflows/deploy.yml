@@ -46,7 +46,7 @@ jobs:
       contents: read
 
     env:
-      TOAST_NCS_WORKLOAD_ID: c91a179e-cfb9-4167-b032-2e958d299322
+      TOAST_NCS_WORKLOAD_ID: 84f4f904-75d1-42bd-a51f-467874f42afa
 
     steps:
       - name: Get Toast Cloud Token
