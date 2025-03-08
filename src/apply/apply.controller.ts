@@ -23,7 +23,6 @@ import PassHashResponseDto from './dto/response/pass-hash.response.dto'
 import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
 
 import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
-import ApplicationStatusRetrieveResponseDto from './dto/response/application-status-retrieve.response.dto'
 
 import {
   SendBulkNotificationRequestDto,
@@ -105,6 +104,15 @@ export class ApplyController {
     )
   }
 
+  @Get('select-chance')
+  @ApiOperation({
+    summary: '경쟁률 조회',
+    description: '경쟁률을 조회합니다.',
+  })
+  async getSelectChance() {
+    return await this.applyService.getSelectChance()
+  }
+
   @Put('new')
   @ApiOperation({
     summary: '지원서 제출',
@@ -124,7 +132,29 @@ export class ApplyController {
   async retrieveApplicationForStudent(
     @Param('id') id: number,
     @Body() body: ApplicationStatusRetrieveRequestDto,
-  ): Promise<ApplicationStatusRetrieveResponseDto> {
+  ): Promise<{
+    userInfo: {
+      id: number
+      name: string
+      phone: string
+    }
+
+    applingClubs: string[]
+
+    currentStatus: {
+      club: string
+      status: string
+    }[]
+
+    formAnswers: {
+      club: string
+      answers: {
+        id: string
+        answer: string
+        files: string[]
+      }[]
+    }[]
+  }> {
     return await this.applyService.retrieveApplicationForStudent(id, body)
   }
 

@@ -29,7 +29,6 @@ import PassCallbackResponseDto from './dto/response/pass-callback.response.dto'
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
 import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
 import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
-import ApplicationStatusRetrieveResponseDto from './dto/response/application-status-retrieve.response.dto'
 
 const KCP_API_CONSTANTS = {
   SITECD: process.env.NODE_ENV === 'development' ? 'AO0QE' : 'AKYT9',
@@ -68,6 +67,24 @@ export class ApplyService {
     private readonly httpService: HttpService,
   ) {
     this.nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 6)
+  }
+
+  async getSelectChance(): Promise<{ [key: string]: number }> {
+    // 현재 있는 모든 지원서를 동아리별로 나눠서 개수를 보낸다.
+    // 현재 상태는 신경쓰지말고 지원서의 단순 개수만 보자.
+    const applications = await this.applyRepository.find()
+
+    const selectChance = applications.reduce((acc, application) => {
+      if (!acc[application.club.id]) {
+        acc[application.club.id] = 0
+      }
+
+      acc[application.club.id] += 1
+
+      return acc
+    }, {})
+
+    return selectChance
   }
 
   async createApplication(data: SubmitApplicationRequestDto) {
@@ -254,7 +271,7 @@ export class ApplyService {
   async retrieveApplicationForStudent(
     id: number,
     body: ApplicationStatusRetrieveRequestDto,
-  ): Promise<ApplicationStatusRetrieveResponseDto> {
+  ) {
     const application = await this.applyRepository.findOne({
       where: {
         student: { id, name: body.studentName },
@@ -283,12 +300,12 @@ export class ApplyService {
 
       applingClubs: applications.map((application) => application.club.name),
       currentStatus: applications.map((application) => ({
-        club: application.club,
+        club: application.club.name,
         status: application.status,
       })),
 
       formAnswers: applications.map((application) => ({
-        club: application.club,
+        club: application.club.name,
         answers: application.answers,
       })),
     }
