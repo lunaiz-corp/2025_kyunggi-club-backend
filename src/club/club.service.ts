@@ -94,10 +94,12 @@ export class ClubService {
     return club
   }
 
-  async retrieveClubApplicationForm(id: string) {
-    const cachedForm = await this.cacheManager.get<ClubTemplateEntity[]>(
-      `template:${id}`,
-    )
+  async retrieveClubApplicationForm(
+    id: string,
+  ): Promise<(ClubTemplateEntity & { id: number })[]> {
+    const cachedForm = await this.cacheManager.get<
+      (ClubTemplateEntity & { id: number })[]
+    >(`template:${id}`)
 
     if (cachedForm) {
       return cachedForm
@@ -108,7 +110,10 @@ export class ClubService {
     })
     await this.cacheManager.set(`template:${id}`, form, 3600 * 1000)
 
-    return form
+    return form.map((template) => ({
+      ...template,
+      id: Number(template.id.split('-')[1]),
+    })) as (ClubTemplateEntity & { id: number })[]
   }
 
   async updateClubApplicationForm(
@@ -121,6 +126,7 @@ export class ClubService {
     return this.clubTemplateRepository.insert(
       data.map((template) => ({
         ...template,
+        id: `${id}-${template.id}`,
         club: { id },
       })),
     )

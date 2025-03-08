@@ -40,9 +40,9 @@ export class ClubEntity extends BaseEntity {
 
 @Entity({ name: 'template' })
 export class ClubTemplateEntity extends BaseEntity {
-  @ApiProperty({ type: Number })
+  @ApiProperty({ type: String })
   @PrimaryColumn()
-  id: number
+  id: string
 
   @ApiProperty({ type: () => ClubEntity, required: false })
   @ManyToOne(() => ClubEntity, (club) => club.id, {

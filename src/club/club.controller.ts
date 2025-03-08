@@ -64,7 +64,7 @@ export class ClubController {
   })
   async retrieveClubApplicationForm(
     @Param('club') club: string,
-  ): Promise<ClubTemplateEntity[]> {
+  ): Promise<(ClubTemplateEntity & { id: number })[]> {
     return await this.clubService.retrieveClubApplicationForm(club)
   }
 
