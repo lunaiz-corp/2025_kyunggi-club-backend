@@ -33,7 +33,7 @@ export class StatusService {
     let status = (await this.statusRepository.find())[0]
 
     if (!status) {
-      await this.statusRepository.save({ status: ServiceStatus.OPEN })
+      await this.statusRepository.insert({ status: ServiceStatus.OPEN })
       status = (await this.statusRepository.find())[0]
     }
 

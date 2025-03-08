@@ -4,7 +4,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, UpdateResult, DeleteResult } from 'typeorm'
+import { Repository, UpdateResult, DeleteResult, InsertResult } from 'typeorm'
 
 import { NoticeEntity } from 'src/common/repository/entity/notice.entity'
 
@@ -69,9 +69,9 @@ export class NoticeService {
   async createNotice(
     board: string,
     data: NoticeMutateRequestDto,
-  ): Promise<NoticeEntity> {
+  ): Promise<InsertResult> {
     await this.cacheManager.del(`notice:${board}`)
-    return this.noticeRepository.save({
+    return this.noticeRepository.insert({
       category: { id: board },
       title: data.title,
       content: data.content,

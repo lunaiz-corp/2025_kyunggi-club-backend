@@ -1,22 +1,17 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common'
 
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, UpdateResult, DeleteResult } from 'typeorm'
+import { Repository, UpdateResult, DeleteResult, InsertResult } from 'typeorm'
 
 import { RolesService } from 'src/auth/roles.service'
 import APIException from 'src/common/dto/APIException.dto'
 
 import {
   ScheduleEntity,
-  OperationScheduleEntity,
   ScheduleCategory,
-  OperationScheduleCategory,
 } from 'src/common/repository/entity/schedule.entity'
 
-import {
-  ScheduleMutateRequestDto,
-  OperationScheduleMutateRequestDto,
-} from './dto/request/schedule-mutate.request.dto'
+import ScheduleMutateRequestDto from './dto/request/schedule-mutate.request.dto'
 
 @Injectable()
 export class ScheduleService {
@@ -24,10 +19,10 @@ export class ScheduleService {
 
   private readonly types = {
     OPERATION: new Set([
-      OperationScheduleCategory.OPERATION_START,
-      OperationScheduleCategory.OPERATION_PRESTART,
-      OperationScheduleCategory.OPERATION_MAINTENANCE_START,
-      OperationScheduleCategory.OPERATION_MAINTENANCE_END,
+      ScheduleCategory.OPERATION_START,
+      ScheduleCategory.OPERATION_PRESTART,
+      ScheduleCategory.OPERATION_MAINTENANCE_START,
+      ScheduleCategory.OPERATION_MAINTENANCE_END,
     ]),
     APPLICATION: new Set([
       ScheduleCategory.APPLICATION_START,
@@ -42,119 +37,56 @@ export class ScheduleService {
 
     @InjectRepository(ScheduleEntity)
     private readonly scheduleRepository: Repository<ScheduleEntity>,
-
-    @InjectRepository(OperationScheduleEntity)
-    private readonly operationScheduleRepository: Repository<OperationScheduleEntity>,
   ) {}
 
-  async retrieveSchedulesList(
-    type?: string,
-    club?: string,
-  ): Promise<
-    (
-      | ScheduleEntity
-      | OperationScheduleEntity
-      | (ScheduleEntity & OperationScheduleEntity)
-    )[]
-  > {
+  async retrieveSchedulesList(type?: string): Promise<ScheduleEntity[]> {
     const allowedCategory = this.types?.[type.toUpperCase()]
 
-    if (type === 'OPERATION') {
-      const schedules = await this.operationScheduleRepository.find()
+    const schedules = await this.scheduleRepository.find()
 
-      return schedules.filter((schedule) => {
-        return type ? allowedCategory.has(schedule.category) : true
-      })
-    } else if (type) {
-      const schedules = await this.scheduleRepository.find({
-        where: club ? { club: { id: club } } : {},
-      })
-
-      return schedules.filter((schedule) => {
-        return type ? allowedCategory.has(schedule.category) : true
-      })
-    } else {
-      const normalSchedules = await this.scheduleRepository.find({
-        where: club ? { club: { id: club } } : {},
-      })
-
-      const operationSchedules = await this.operationScheduleRepository.find()
-
-      return [...normalSchedules, ...operationSchedules]
-    }
-  }
-
-  async createSchedule(
-    data: ScheduleMutateRequestDto,
-  ): Promise<ScheduleEntity | OperationScheduleEntity> {
-    return this.scheduleRepository.save({
-      ...data,
-      club: { id: data.club },
+    return schedules.filter((schedule) => {
+      return type ? allowedCategory.has(schedule.category) : true
     })
   }
 
-  async createOperationSchedule(
-    data: OperationScheduleMutateRequestDto,
-  ): Promise<ScheduleEntity | OperationScheduleEntity> {
-    return this.operationScheduleRepository.save(data)
+  async createSchedule(data: ScheduleMutateRequestDto): Promise<InsertResult> {
+    return this.scheduleRepository.insert(data)
   }
 
   async updateSchedule(
     id: string,
-    data: ScheduleMutateRequestDto | OperationScheduleMutateRequestDto,
+    data: ScheduleMutateRequestDto,
   ): Promise<UpdateResult> {
+    if (!this.rolesService.canRootActivate()) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     const schedule = await this.scheduleRepository.findOne({
       where: { id },
-      relations: ['club'],
     })
-    if (schedule) {
-      if (!this.rolesService.canActivate([schedule.club.id])) {
-        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
-      }
 
-      return this.scheduleRepository.update(id, {
-        ...(data as ScheduleMutateRequestDto),
-        club: { id: (data as ScheduleMutateRequestDto).club },
-      })
+    if (!schedule) {
+      throw new APIException(HttpStatus.NOT_FOUND, '일정을 찾을 수 없습니다.')
     }
 
-    const operationSchedule = await this.operationScheduleRepository.findOne({
-      where: { id },
+    return this.scheduleRepository.update(id, {
+      ...data,
     })
-    if (operationSchedule) {
-      if (!this.rolesService.canRootActivate()) {
-        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
-      }
-
-      return this.operationScheduleRepository.update(
-        id,
-        data as OperationScheduleMutateRequestDto,
-      )
-    }
   }
 
   async deleteSchedule(id: string): Promise<DeleteResult> {
+    if (!this.rolesService.canRootActivate()) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
     const schedule = await this.scheduleRepository.findOne({
       where: { id },
-      relations: ['club'],
     })
-    if (schedule) {
-      if (!this.rolesService.canActivate([schedule.club.id])) {
-        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
-      }
 
-      return this.scheduleRepository.delete(id)
+    if (!schedule) {
+      throw new APIException(HttpStatus.NOT_FOUND, '일정을 찾을 수 없습니다.')
     }
 
-    const operationSchedule = await this.operationScheduleRepository.findOne({
-      where: { id },
-    })
-    if (operationSchedule) {
-      if (!this.rolesService.canRootActivate()) {
-        throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
-      }
-
-      return this.operationScheduleRepository.delete(id)
-    }
+    return this.scheduleRepository.delete(id)
   }
 }

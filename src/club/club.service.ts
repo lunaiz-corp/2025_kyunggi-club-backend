@@ -117,7 +117,8 @@ export class ClubService {
   ) {
     await this.cacheManager.del(`template:${id}`)
 
-    return this.clubTemplateRepository.save(
+    await this.clubTemplateRepository.delete({ club: { id } })
+    return this.clubTemplateRepository.insert(
       data.map((template) => ({
         ...template,
         club: { id },
