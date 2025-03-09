@@ -8,6 +8,7 @@ import {
   FormAnswerEntity,
   ApplyEntity,
 } from 'src/common/repository/entity/apply.entity'
+import { PassEntity } from 'src/common/repository/entity/pass.entity'
 
 import { ApplyController } from './apply.controller'
 import { ApplyService } from './apply.service'
@@ -22,6 +23,7 @@ import { RolesService } from 'src/auth/roles.service'
       ParentEntity,
       FormAnswerEntity,
       ApplyEntity,
+      PassEntity,
     ]),
   ],
   controllers: [ApplyController],

@@ -24,6 +24,8 @@ import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
 
 import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
 
+import RegisterCiDiRequestDto from './dto/request/register-cidi.request.dto'
+
 import {
   SendBulkNotificationRequestDto,
   SendNotificationRequestDto,
@@ -154,6 +156,18 @@ export class ApplyController {
     }[]
   }> {
     return await this.applyService.retrieveApplicationForStudent(id, body)
+  }
+
+  @Patch('student/:id/cidi')
+  @ApiOperation({
+    summary: '실명인증 미완료 학생 실명등록',
+    description: '실명 인증을 완료하지 않은 학생을 실명 등록합니다.',
+  })
+  async registerCiDi(
+    @Param('id') id: number,
+    @Body() body: RegisterCiDiRequestDto,
+  ) {
+    await this.applyService.registerCiDi(id, body)
   }
 
   @Get(':club')

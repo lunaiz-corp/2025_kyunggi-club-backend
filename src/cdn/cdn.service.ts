@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 
 import { Cache } from 'cache-manager'
@@ -36,11 +36,17 @@ export class CdnService {
     keyPrefix?: string,
   ): Promise<PresignedUrlResponseDto> {
     if (!type || !['apply', 'notice'].includes(type)) {
-      throw new APIException(400, "올바르지 않은 'type' 형식입니다.")
+      throw new APIException(
+        HttpStatus.BAD_REQUEST,
+        "올바르지 않은 'type' 형식입니다.",
+      )
     }
 
     if (!filename || !/^(?!\.)[^/:*?"<>|]+?\.[^/:*?"<>|]+$/.test(filename)) {
-      throw new APIException(400, "올바르지 않은 'filename' 형식입니다.")
+      throw new APIException(
+        HttpStatus.BAD_REQUEST,
+        "올바르지 않은 'filename' 형식입니다.",
+      )
     }
 
     const cachedPresignedUrl =

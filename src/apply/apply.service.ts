@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 
@@ -29,6 +29,8 @@ import PassCallbackResponseDto from './dto/response/pass-callback.response.dto'
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
 import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
 import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
+import RegisterCiDiRequestDto from './dto/request/register-cidi.request.dto'
+import { PassEntity } from 'src/common/repository/entity/pass.entity'
 
 const KCP_API_CONSTANTS = {
   SITECD: process.env.NODE_ENV === 'development' ? 'AO0QE' : 'AKYT9',
@@ -64,6 +66,9 @@ export class ApplyService {
     @InjectRepository(ApplyEntity)
     private readonly applyRepository: Repository<ApplyEntity>,
 
+    @InjectRepository(PassEntity)
+    private readonly passDecryptedRepository: Repository<PassEntity>,
+
     private readonly httpService: HttpService,
   ) {
     this.nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 6)
@@ -92,23 +97,27 @@ export class ApplyService {
   async createApplication(data: SubmitApplicationRequestDto) {
     const { userInfo, parentInfo, formAnswers } = data
 
-    const passData = userInfo.verifiedRefId
-      ? await this.cacheManager.get<any>(
-          `pass-decrypted:${userInfo.verifiedRefId}`,
-        )
-      : undefined
-    const parentPassData = parentInfo.verifiedRefId
-      ? await this.cacheManager.get<any>(
-          `pass-decrypted:${parentInfo.verifiedRefId}`,
-        )
-      : undefined
+    const passData = JSON.parse(
+      (
+        await this.passDecryptedRepository.findOne({
+          where: { refId: userInfo.verifiedRefId },
+        })
+      ).data,
+    )
+    const parentPassData = JSON.parse(
+      (
+        await this.passDecryptedRepository.findOne({
+          where: { refId: parentInfo.verifiedRefId },
+        })
+      ).data,
+    )
 
     const alreadyApplied = await this.studentRepository.findOne({
       where: { id: userInfo.id },
     })
 
     if (alreadyApplied) {
-      throw new APIException(409, '이미 지원한 학생입니다.')
+      throw new APIException(HttpStatus.CONFLICT, '이미 지원한 학생입니다.')
     }
 
     await this.studentRepository.insert({
@@ -201,6 +210,7 @@ export class ApplyService {
       where: { club: { id: club } },
     })
 
+    // TODO: 이거 단계별로 Array 묶어서 보내기
     return applications
   }
 
@@ -277,43 +287,145 @@ export class ApplyService {
         student: { id, name: body.studentName },
         password: body.password,
       },
-      relations: ['club'],
+      relations: ['student', 'club', 'parent'],
     })
 
     if (applications.length === 0) {
-      throw new APIException(404, '존재하지 않는 지원서입니다.')
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        '존재하지 않는 지원서입니다.',
+      )
     }
 
-    const student = await this.studentRepository.findOne({
-      where: { id, name: body.studentName },
-      select: ['id', 'name', 'phone'],
-    })
+    if (applications.some((application) => !application.student.ci)) {
+      // 부모 CI도 없는지 확인
+      if (applications.some((application) => !application.parent.ci)) {
+        throw new APIException(
+          HttpStatus.LOCKED,
+          '실명 인증이 완료되지 않은 사용자입니다.',
+        )
+      }
+    }
 
     const answers = (await this.formAnswerRepository.find()).filter((answer) =>
-      answer.id.startsWith(`${student.id}-`),
+      answer.id.startsWith(`${id}-`),
     )
 
     return {
-      userInfo: student,
+      userInfo: {
+        ...applications[0].student,
+        ci: undefined,
+        di: undefined,
+      },
 
-      applingClubs: applications.map((application) => application.club.id),
-      currentStatus: applications.map((application) => ({
-        club: application.club.id,
-        status: application.status,
-      })),
+      applingClubs: applications
+        .sort((a, b) => a.club.name.localeCompare(b.club.name))
+        .map((application) => application.club.id),
+      currentStatus: applications
+        .sort((a, b) => a.club.name.localeCompare(b.club.name))
+        .map((application) => ({
+          club: application.club.id,
+          status: application.status,
+        })),
 
-      formAnswers: applications.map((application) => ({
-        club: application.club.id,
-        answers: answers
-          .filter((answer) =>
-            answer.id.startsWith(`${student.id}-${application.club.id}`),
-          )
-          .map((answer) => ({
-            ...answer,
-            id: Number(answer.id.split('-')[2]),
-          }))
-          .sort((a, b) => a.id - b.id),
-      })),
+      formAnswers: applications
+        .sort((a, b) => a.club.name.localeCompare(b.club.name))
+        .map((application) => ({
+          club: application.club.id,
+          answers: answers
+            .filter((answer) =>
+              answer.id.startsWith(`${id}-${application.club.id}`),
+            )
+            .map((answer) => ({
+              ...answer,
+              id: Number(answer.id.split('-')[2]),
+            }))
+            .sort((a, b) => a.id - b.id),
+        })),
+    }
+  }
+
+  async registerCiDi(id: number, body: RegisterCiDiRequestDto) {
+    const applications = await this.applyRepository.find({
+      where: {
+        student: { id, name: body.studentName },
+        password: body.password,
+      },
+      relations: ['student', 'club', 'parent'],
+    })
+
+    if (applications.length === 0) {
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        '존재하지 않는 지원서입니다.',
+      )
+    }
+
+    if (
+      applications.every((application) => application.student.ci) ||
+      applications.every((application) => application.parent.ci)
+    ) {
+      throw new APIException(
+        HttpStatus.LOCKED,
+        '이미 실명 인증된 사용자입니다.',
+      )
+    }
+
+    const decryptedData = JSON.parse(
+      (
+        await this.passDecryptedRepository.findOne({
+          where: {
+            refId: body.verifiedRefId,
+          },
+        })
+      )?.data ?? '{}',
+    )
+
+    if (!decryptedData.ci) {
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        '일치하는 실명 인증건을 찾을 수 없습니다.',
+      )
+    }
+
+    const isParent =
+      new Date().getFullYear() - Number(decryptedData.birth_day.slice(0, 4)) >=
+      25
+
+    if (isParent) {
+      if (applications[0].parent.phone !== decryptedData.phone_no) {
+        throw new APIException(
+          HttpStatus.FORBIDDEN,
+          '등록된 전화번호와 인증한 전화번호가 일치하지 않습니다.',
+        )
+      }
+
+      await this.parentRepository.update(
+        {
+          phone: applications[0].parent.phone,
+        },
+        {
+          ci: decryptedData.ci,
+          di: decryptedData.di,
+        },
+      )
+    } else {
+      if (applications[0].student.phone !== decryptedData.phone_no) {
+        throw new APIException(
+          HttpStatus.FORBIDDEN,
+          '등록된 전화번호와 인증한 전화번호가 일치하지 않습니다.',
+        )
+      }
+
+      await this.studentRepository.update(
+        {
+          id,
+        },
+        {
+          ci: decryptedData.ci,
+          di: decryptedData.di,
+        },
+      )
     }
   }
 
@@ -330,7 +442,10 @@ export class ApplyService {
     })
 
     if (!application) {
-      throw new APIException(404, '존재하지 않는 지원서입니다.')
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        '존재하지 않는 지원서입니다.',
+      )
     }
 
     await this.applyRepository.update(
@@ -358,7 +473,7 @@ export class ApplyService {
     })
 
     if (type === 'MANUAL' && !application) {
-      throw new APIException(403, '권한이 없습니다.')
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
     return this.sendBulkNotification([id], club, type, content)
@@ -373,7 +488,10 @@ export class ApplyService {
     })
 
     if (!application) {
-      throw new APIException(404, '존재하지 않는 지원서입니다.')
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        '존재하지 않는 지원서입니다.',
+      )
     }
 
     await this.applyRepository.update(
@@ -401,11 +519,17 @@ export class ApplyService {
 
     const orderIdRegex = /^KGH\d{14}@\w{10}$/
     if (!orderId || !orderIdRegex.test(orderId)) {
-      throw new APIException(400, "올바르지 않은 'orderId' 형식입니다.")
+      throw new APIException(
+        HttpStatus.BAD_REQUEST,
+        "올바르지 않은 'orderId' 형식입니다.",
+      )
     }
 
     if (!device || !['pc', 'android', 'ios'].includes(device)) {
-      throw new APIException(400, "올바르지 않은 'device' 형식입니다.")
+      throw new APIException(
+        HttpStatus.BAD_REQUEST,
+        "올바르지 않은 'device' 형식입니다.",
+      )
     }
 
     const ctType = 'HAS'
@@ -497,7 +621,7 @@ export class ApplyService {
               // Ret_URL
               Ret_URL: `${
                 data.res_cd === '0000' && process.env.NODE_ENV === 'development'
-                  ? 'http://macbook:4000'
+                  ? 'http://192.168.1.60:4000'
                   : 'https://api.kyunggi.club'
               }/apply/pass/callback`,
 
@@ -599,7 +723,11 @@ export class ApplyService {
     )
 
     await this.cacheManager.del(`pass-hashdata:${orderId}`)
-    await this.cacheManager.set(`pass-decrypted:${orderId}`, decryptedData)
+
+    await this.passDecryptedRepository.save({
+      refId: orderId,
+      data: JSON.stringify(decryptedData),
+    })
 
     return {
       res_cd: decryptedData.res_cd,
