@@ -97,20 +97,20 @@ export class ApplyService {
   async createApplication(data: SubmitApplicationRequestDto) {
     const { userInfo, parentInfo, formAnswers } = data
 
-    const passData = JSON.parse(
-      (
-        await this.passDecryptedRepository.findOne({
-          where: { refId: userInfo.verifiedRefId },
-        })
-      ).data,
-    )
-    const parentPassData = JSON.parse(
-      (
-        await this.passDecryptedRepository.findOne({
-          where: { refId: parentInfo.verifiedRefId },
-        })
-      ).data,
-    )
+    // const passData = JSON.parse(
+    //   (
+    //     await this.passDecryptedRepository.findOne({
+    //       where: { refId: userInfo.verifiedRefId },
+    //     })
+    //   ).data,
+    // )
+    // const parentPassData = JSON.parse(
+    //   (
+    //     await this.passDecryptedRepository.findOne({
+    //       where: { refId: parentInfo.verifiedRefId },
+    //     })
+    //   ).data,
+    // )
 
     const alreadyApplied = await this.studentRepository.findOne({
       where: { id: userInfo.id },
@@ -124,16 +124,16 @@ export class ApplyService {
       id: userInfo.id,
       name: userInfo.name,
       phone: userInfo.phone,
-      ci: passData ? (passData.ci_url as string) : undefined,
-      di: passData ? (passData.di_url as string) : undefined,
+      // ci: passData ? (passData.ci_url as string) : undefined,
+      // di: passData ? (passData.di_url as string) : undefined,
     })
 
     await this.parentRepository.insert({
       name: parentInfo.name,
       phone: parentInfo.phone,
       relationship: parentInfo.relationship,
-      ci: parentPassData ? (parentPassData.ci_url as string) : undefined,
-      di: parentPassData ? (parentPassData.di_url as string) : undefined,
+      // ci: parentPassData ? (parentPassData.ci_url as string) : undefined,
+      // di: parentPassData ? (parentPassData.di_url as string) : undefined,
     })
 
     const password = this.nanoid(6)
