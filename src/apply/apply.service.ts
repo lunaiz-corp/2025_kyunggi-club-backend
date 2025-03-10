@@ -13,6 +13,7 @@ import { catchError, firstValueFrom } from 'rxjs'
 import { Cache } from 'cache-manager'
 
 import { customAlphabet } from 'nanoid'
+import { instanceToPlain } from 'class-transformer'
 
 import {
   StudentEntity,
@@ -206,12 +207,67 @@ export class ApplyService {
   }
 
   async retrieveApplicationsList(club: string) {
-    const applications = await this.applyRepository.find({
+    // Step 1: 특정 clubId를 포함하는 지원서만 가져옴
+    const filteredApplications = await this.applyRepository.find({
+      select: ['student', 'club', 'status'],
+      relations: ['student', 'club'],
       where: { club: { id: club } },
     })
 
-    // TODO: 이거 단계별로 Array 묶어서 보내기
-    return applications
+    if (filteredApplications.length === 0) {
+      return {} // 특정 clubId에 해당하는 데이터가 없으면 빈 객체 반환
+    }
+
+    // Step 2: 해당 지원서의 studentId을 가져와서 해당 사용자의 모든 club 신청 데이터 조회
+    const studentIds = filteredApplications
+      .map((app) => app.student.id)
+      .filter(Boolean)
+
+    const allApplications = await this.applyRepository.find({
+      select: ['student', 'club', 'status'],
+      relations: ['student', 'club'],
+      where: studentIds.map((id) => ({ student: { id } })),
+    })
+
+    // Step 3: 그룹화하여 최종 데이터 변환
+    const grouped = allApplications.reduce(
+      (acc, apply) => {
+        const plainApply = instanceToPlain(apply) // BaseEntity 메서드 제거
+        const { status, club, id, ...rest } = plainApply // id 제거
+
+        // student의 ci, di 필드 삭제
+        if (rest.student) {
+          delete rest.student.ci
+          delete rest.student.di
+        }
+
+        if (!acc[status]) {
+          acc[status] = {}
+        }
+
+        const userId = rest.student.id
+        if (!acc[status][userId]) {
+          acc[status][userId] = {
+            userInfo: { ...rest.student }, // student 객체를 userInfo로 변경
+            applingClubs: [], // club 리스트 저장할 배열
+          }
+        }
+
+        acc[status][userId].applingClubs.push(club.id) // club의 이름을 배열에 추가
+        return acc
+      },
+      {} as Record<string, Record<string, any>>,
+    )
+
+    // 중첩 객체를 배열 형태로 변환
+    const result = Object.fromEntries(
+      Object.entries(grouped).map(([status, users]) => [
+        status,
+        Object.values(users),
+      ]),
+    )
+
+    return result
   }
 
   async sendBulkNotification(
@@ -273,9 +329,42 @@ export class ApplyService {
         student: { id },
         club: { id: club },
       },
+      relations: ['student', 'club', 'parent'],
     })
 
-    return application
+    if (!application) {
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        '존재하지 않는 지원서입니다.',
+      )
+    }
+
+    const answers = (await this.formAnswerRepository.find()).filter((answer) =>
+      answer.id.startsWith(`${id}-${club}-`),
+    )
+
+    return {
+      userInfo: {
+        id: application.student.id,
+        name: application.student.name,
+        phone: application.student.phone,
+      },
+
+      parentInfo: {
+        name: application.parent.name,
+        relationship: application.parent.relationship,
+        phone: application.parent.phone,
+      },
+
+      currentStatus: application.status,
+
+      formAnswers: answers
+        .map((answer) => ({
+          ...answer,
+          id: Number(answer.id.split('-')[2]),
+        }))
+        .sort((a, b) => a.id - b.id),
+    }
   }
 
   async retrieveApplicationForStudent(

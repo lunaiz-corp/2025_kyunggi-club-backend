@@ -31,8 +31,6 @@ import {
   SendNotificationRequestDto,
 } from './dto/request/send-notification.request.dto'
 
-import { ApplyEntity } from 'src/common/repository/entity/apply.entity'
-
 import { ApplyService } from './apply.service'
 
 import { AuthGuard } from 'src/auth/auth.guard'
@@ -120,13 +118,13 @@ export class ApplyController {
     summary: '지원서 제출',
     description: '실제 입력된 지원서를 업로드합니다.',
   })
-  async createApplication(@Body() _: SubmitApplicationRequestDto) {
-    // await this.applyService.createApplication(body)
+  async createApplication(@Body() body: SubmitApplicationRequestDto) {
+    await this.applyService.createApplication(body)
 
-    throw new APIException(
-      HttpStatus.SERVICE_UNAVAILABLE,
-      '지원 기간이 종료되었습니다.',
-    )
+    // throw new APIException(
+    //   HttpStatus.SERVICE_UNAVAILABLE,
+    //   '지원 기간이 종료되었습니다.',
+    // )
   }
 
   @Post('student/:id')
@@ -182,9 +180,7 @@ export class ApplyController {
     description: '지원서 목록을 조회합니다.',
   })
   @ApiBearerAuth()
-  async retrieveApplicationsList(
-    @Param('club') club: string,
-  ): Promise<ApplyEntity[]> {
+  async retrieveApplicationsList(@Param('club') club: string) {
     if (!this.rolesService.canActivate([club])) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
@@ -225,7 +221,7 @@ export class ApplyController {
   async retrieveApplication(
     @Param('club') club: string,
     @Param('id') id: number,
-  ): Promise<ApplyEntity> {
+  ) {
     if (!this.rolesService.canActivate([club])) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }

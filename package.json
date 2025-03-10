@@ -28,6 +28,7 @@
     "axios": "^1.8.2",
     "bcryptjs": "^3.0.2",
     "cache-manager": "^6.4.0",
+    "class-transformer": "^0.5.1",
     "ejs": "^3.1.10",
     "fastify": "^5.2.1",
     "keyv": "^5.2.3",
