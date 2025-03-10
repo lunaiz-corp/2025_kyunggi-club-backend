@@ -120,8 +120,13 @@ export class ApplyController {
     summary: '지원서 제출',
     description: '실제 입력된 지원서를 업로드합니다.',
   })
-  async createApplication(@Body() body: SubmitApplicationRequestDto) {
-    await this.applyService.createApplication(body)
+  async createApplication(@Body() _: SubmitApplicationRequestDto) {
+    // await this.applyService.createApplication(body)
+
+    throw new APIException(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      '지원 기간이 종료되었습니다.',
+    )
   }
 
   @Post('student/:id')
