@@ -351,9 +351,9 @@ export class ApplyService {
       },
 
       parentInfo: {
-        name: application.parent.name,
-        relationship: application.parent.relationship,
-        phone: application.parent.phone,
+        name: application.parent?.name,
+        relationship: application.parent?.relationship,
+        phone: application.parent?.phone,
       },
 
       currentStatus: application.status,
@@ -388,7 +388,11 @@ export class ApplyService {
 
     if (applications.some((application) => !application.student.ci)) {
       // 부모 CI도 없는지 확인
-      if (applications.some((application) => !application.parent.ci)) {
+      if (
+        applications.some(
+          (application) => application.parent && !application.parent.ci,
+        )
+      ) {
         throw new APIException(
           HttpStatus.LOCKED,
           '실명 인증이 완료되지 않은 사용자입니다.',
