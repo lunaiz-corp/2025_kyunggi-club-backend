@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 
-import { ScheduleEntity } from 'src/common/repository/entity/schedule.entity'
+import { Schedule } from 'src/common/repository/schema/schedule.schema'
 import { AuthGuard } from 'src/auth/auth.guard'
 
 import { ScheduleService } from './schedule.service'
@@ -32,7 +32,7 @@ export class ScheduleController {
   })
   async retrieveSchedulesList(
     @Query('type') type?: string,
-  ): Promise<ScheduleEntity[]> {
+  ): Promise<Schedule[]> {
     return await this.scheduleService.retrieveSchedulesList(type)
   }
 

@@ -10,7 +10,7 @@ import {
 import { FastifyRequest } from 'fastify'
 
 import APIException from 'src/common/dto/APIException.dto'
-import { MemberEntity } from 'src/common/repository/entity/member.entity'
+import { Member } from 'src/common/repository/schema/member.schema'
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -31,7 +31,7 @@ export class AuthGuard implements CanActivate {
           sub: string
           iat: number
           exp: number
-        } & Omit<MemberEntity & { club: string[] }, 'email'>
+        } & Omit<Member & { club: string[] }, 'email'>
       >(token, {
         secret: process.env.JWT_SECRET,
       })

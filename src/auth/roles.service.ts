@@ -1,17 +1,14 @@
 import { Inject, Injectable, Scope } from '@nestjs/common'
 import { REQUEST } from '@nestjs/core'
 import { FastifyRequest } from 'fastify'
-import {
-  MemberEntity,
-  MemberRole,
-} from 'src/common/repository/entity/member.entity'
+import { Member, MemberRole } from 'src/common/repository/schema/member.schema'
 
 @Injectable({ scope: Scope.REQUEST })
 export class RolesService {
   constructor(
     @Inject(REQUEST)
     private readonly request: FastifyRequest & {
-      user: MemberEntity & { club: string[] }
+      user: Member & { club: string[] }
     },
   ) {}
 

@@ -17,7 +17,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { FastifyReply } from 'fastify'
 
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
-import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
+import {
+  ApplicationStatusMutateRequestDto,
+  ApplicationStatusBulkMutateRequestDto,
+} from './dto/request/application-status-mutate.request.dto'
 
 import PassHashResponseDto from './dto/response/pass-hash.response.dto'
 import PassCallbackRequestDto from './dto/request/pass-callback.request.dto'
@@ -135,29 +138,7 @@ export class ApplyController {
   async retrieveApplicationForStudent(
     @Param('id') id: number,
     @Body() body: ApplicationStatusRetrieveRequestDto,
-  ): Promise<{
-    userInfo: {
-      id: number
-      name: string
-      phone: string
-    }
-
-    applingClubs: string[]
-
-    currentStatus: {
-      club: string
-      status: string
-    }[]
-
-    formAnswers: {
-      club: string
-      answers: {
-        id: number
-        answer: string
-        files: string[]
-      }[]
-    }[]
-  }> {
+  ) {
     return await this.applyService.retrieveApplicationForStudent(id, body)
   }
 
@@ -206,9 +187,26 @@ export class ApplyController {
     return await this.applyService.sendBulkNotification(
       body.ids,
       club,
-      'MANUAL',
       body.content,
     )
+  }
+
+  @Patch(':club/bulk-status')
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary: '(ADMIN) 지원서 일괄 상태 수정',
+    description: '지원서를 일괄 상태를 수정합니다. (합격, 불합격...)',
+  })
+  @ApiBearerAuth()
+  async updateBulkApplicationStatus(
+    @Param('club') club: string,
+    @Body() body: ApplicationStatusBulkMutateRequestDto,
+  ) {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
+    await this.applyService.updateApplicationStatusBulk(club, body)
   }
 
   @Get(':club/:id')
@@ -264,12 +262,7 @@ export class ApplyController {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
-    return await this.applyService.sendNotification(
-      id,
-      club,
-      'MANUAL',
-      body.content,
-    )
+    return await this.applyService.sendNotification(id, club, body.content)
   }
 
   @Put(':club/:id/final-submit')

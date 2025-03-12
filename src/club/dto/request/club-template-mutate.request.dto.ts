@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { QuestionType } from 'src/common/repository/entity/club.entity'
+import { QuestionType } from 'src/common/repository/schema/club.schema'
 
 export class ClubTemplateMutateRequestDto {
   /**

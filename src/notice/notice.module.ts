@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common'
-import { TypeOrmModule } from '@nestjs/typeorm'
+import { MongooseModule } from '@nestjs/mongoose'
 
-import { NoticeEntity } from 'src/common/repository/entity/notice.entity'
+import {
+  Notice,
+  NoticeSchema,
+} from 'src/common/repository/schema/notice.schema'
 
 import { NoticeController } from './notice.controller'
 import { NoticeService } from './notice.service'
@@ -9,7 +12,9 @@ import { NoticeService } from './notice.service'
 import { RolesService } from 'src/auth/roles.service'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([NoticeEntity])],
+  imports: [
+    MongooseModule.forFeature([{ name: Notice.name, schema: NoticeSchema }]),
+  ],
   controllers: [NoticeController],
   providers: [NoticeService, RolesService],
 })

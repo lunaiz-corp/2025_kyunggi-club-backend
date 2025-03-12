@@ -1,12 +1,12 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { InjectRepository } from '@nestjs/typeorm'
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 
-import { MemberEntity } from 'src/common/repository/entity/member.entity'
-import { Repository } from 'typeorm'
+import { Model } from 'mongoose'
+import { InjectModel } from '@nestjs/mongoose'
+import { Member } from 'src/common/repository/schema/member.schema'
 
 import { hash, compare, genSalt } from 'bcryptjs'
 
@@ -25,8 +25,8 @@ export class AuthService {
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
 
-    @InjectRepository(MemberEntity)
-    private readonly memberRepository: Repository<MemberEntity>,
+    @InjectModel(Member.name)
+    private readonly memberModel: Model<Member>,
   ) {}
 
   private async hashPassword(raw: string) {
@@ -38,11 +38,8 @@ export class AuthService {
   }
 
   async signIn(email: string, password: string): Promise<SignInResponseDto> {
-    const user = await this.memberRepository.findOne({
-      where: {
-        email,
-      },
-      relations: ['club'],
+    const user = await this.memberModel.findOne({
+      email,
     })
 
     if (!user) {
@@ -89,7 +86,7 @@ export class AuthService {
 
   async setAdminPassword(
     data: ClubAdminSetpasswordRequestDto,
-  ): Promise<Partial<MemberEntity>> {
+  ): Promise<Partial<Member>> {
     const savedRequest = await this.cacheManager.get<{
       club: string
       email: string
@@ -102,14 +99,14 @@ export class AuthService {
       )
     }
 
-    await this.memberRepository.update(
+    await this.memberModel.updateOne(
       { email: savedRequest.email },
       { password: await this.hashPassword(data.password) },
     )
 
     await this.cacheManager.del(`password-request:${data.pincode}`)
 
-    return this.memberRepository.findOne({
+    return this.memberModel.findOne({
       where: { email: savedRequest.email },
       select: ['email', 'name', 'phone', 'role', 'permission'],
     })
