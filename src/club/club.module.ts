@@ -1,11 +1,16 @@
 import { Module } from '@nestjs/common'
-import { TypeOrmModule } from '@nestjs/typeorm'
+import { MongooseModule } from '@nestjs/mongoose'
 
 import {
-  ClubEntity,
-  ClubTemplateEntity,
-} from 'src/common/repository/entity/club.entity'
-import { MemberEntity } from 'src/common/repository/entity/member.entity'
+  Club,
+  ClubSchema,
+  ClubTemplate,
+  ClubTemplateSchema,
+} from 'src/common/repository/schema/club.schema'
+import {
+  Member,
+  MemberSchema,
+} from 'src/common/repository/schema/member.schema'
 
 import { ClubController } from './club.controller'
 import { ClubService } from './club.service'
@@ -13,7 +18,11 @@ import { RolesService } from 'src/auth/roles.service'
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ClubEntity, ClubTemplateEntity, MemberEntity]),
+    MongooseModule.forFeature([
+      { name: Club.name, schema: ClubSchema },
+      { name: ClubTemplate.name, schema: ClubTemplateSchema },
+      { name: Member.name, schema: MemberSchema },
+    ]),
   ],
   controllers: [ClubController],
   providers: [ClubService, RolesService],

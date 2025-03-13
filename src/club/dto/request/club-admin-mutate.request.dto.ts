@@ -1,4 +1,4 @@
-import { MemberRole } from 'src/common/repository/entity/member.entity'
+import { MemberRole } from 'src/common/repository/schema/member.schema'
 
 export class ClubAdminMutateRequestDto {
   /**

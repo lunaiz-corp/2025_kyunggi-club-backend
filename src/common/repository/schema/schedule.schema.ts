@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
+
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { HydratedDocument } from 'mongoose'
 
 export enum ScheduleCategory {
   // 운영 일정
@@ -21,31 +23,24 @@ export enum ScheduleCategory {
   ETC = 'ETC',
 }
 
-@Entity({ name: 'schedule' })
-export class ScheduleEntity extends BaseEntity {
-  @ApiProperty({
-    type: String,
-    example: 'b1e7dea0-2060-4f0a-835a-a51636fa1926',
-  })
-  @PrimaryGeneratedColumn('uuid')
-  id: string
-
+@Schema()
+export class Schedule {
   @ApiProperty({ type: String, example: '스케쥴 제목' })
-  @Column({ type: 'text' })
+  @Prop({ required: true, type: String })
   title: string
 
   @ApiProperty({ type: () => Object.values(ScheduleCategory) })
-  @Column({ type: 'text', enum: Object.values(ScheduleCategory) })
+  @Prop({ required: true, enum: Object.values(ScheduleCategory) })
   category: ScheduleCategory
 
   @ApiProperty({ type: Date })
-  @Column({ type: 'timestamp with time zone' })
-  start_at: Date
+  @Prop({ required: true, type: Date })
+  startAt: Date
 
   @ApiProperty({ type: Date })
-  @Column({
-    type: 'timestamp with time zone',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  created_at: Date
+  @Prop({ required: true, type: Date, default: Date.now })
+  createdAt: Date
 }
+
+export type ScheduleDocument = HydratedDocument<Schedule>
+export const ScheduleSchema = SchemaFactory.createForClass(Schedule)

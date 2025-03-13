@@ -3,10 +3,9 @@ import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, UpdateResult, DeleteResult, InsertResult } from 'typeorm'
-
-import { NoticeEntity } from 'src/common/repository/entity/notice.entity'
+import { Model } from 'mongoose'
+import { InjectModel } from '@nestjs/mongoose'
+import { Notice } from 'src/common/repository/schema/notice.schema'
 
 import APIException from 'src/common/dto/APIException.dto'
 import NoticeMutateRequestDto from './dto/request/notice-mutate.request.dto'
@@ -19,40 +18,38 @@ export class NoticeService {
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
 
-    @InjectRepository(NoticeEntity)
-    private readonly noticeRepository: Repository<NoticeEntity>,
+    @InjectModel(Notice.name)
+    private readonly noticeModel: Model<Notice>,
   ) {}
 
-  async retrieveNoticesList(board: string): Promise<NoticeEntity[]> {
-    const cachedNotices = await this.cacheManager.get<NoticeEntity[]>(
+  async retrieveNoticesList(board: string): Promise<Notice[]> {
+    const cachedNotices = await this.cacheManager.get<Notice[]>(
       `notice:${board}`,
     )
 
-    if (cachedNotices) {
-      return cachedNotices
-    }
+    if (cachedNotices) return cachedNotices
 
-    const notices = await this.noticeRepository.find({
-      where: { category: { id: board } },
-      select: { id: true, title: true, created_at: true },
-      order: { created_at: 'DESC' },
-    })
+    const notices = await this.noticeModel
+      .find({ category: { id: board } })
+      .select('id title createdAt')
+      .sort('-createdAt')
+      .exec()
+
     await this.cacheManager.set(`notice:${board}`, notices, 1800 * 1000)
 
     return notices
   }
 
-  async retrieveNotice(board: string, id: number): Promise<NoticeEntity> {
-    const cachedNotice = await this.cacheManager.get<NoticeEntity>(
+  async retrieveNotice(board: string, id: number): Promise<Notice> {
+    const cachedNotice = await this.cacheManager.get<Notice>(
       `notice:${board}:${id}`,
     )
 
-    if (cachedNotice) {
-      return cachedNotice
-    }
+    if (cachedNotice) return cachedNotice
 
-    const notice = await this.noticeRepository.findOne({
-      where: { category: { id: board }, id },
+    const notice = await this.noticeModel.findOne({
+      category: { id: board },
+      id,
     })
 
     if (!notice) {
@@ -66,26 +63,20 @@ export class NoticeService {
     return notice
   }
 
-  async createNotice(
-    board: string,
-    data: NoticeMutateRequestDto,
-  ): Promise<InsertResult> {
+  async createNotice(board: string, data: NoticeMutateRequestDto) {
     await this.cacheManager.del(`notice:${board}`)
-    return this.noticeRepository.insert({
+    await this.noticeModel.create({
       category: { id: board },
       title: data.title,
       content: data.content,
     })
   }
 
-  async updateNotice(
-    board: string,
-    id: number,
-    data: NoticeMutateRequestDto,
-  ): Promise<UpdateResult> {
+  async updateNotice(board: string, id: number, data: NoticeMutateRequestDto) {
     await this.cacheManager.del(`notice:${board}`)
     await this.cacheManager.del(`notice:${board}:${id}`)
-    return this.noticeRepository.update(
+
+    await this.noticeModel.updateOne(
       { category: { id: board }, id },
       {
         title: data.title,
@@ -94,9 +85,10 @@ export class NoticeService {
     )
   }
 
-  async deleteNotice(board: string, id: number): Promise<DeleteResult> {
+  async deleteNotice(board: string, id: number) {
     await this.cacheManager.del(`notice:${board}`)
     await this.cacheManager.del(`notice:${board}:${id}`)
-    return this.noticeRepository.delete({ category: { id: board }, id })
+
+    await this.noticeModel.deleteOne({ category: { id: board }, id })
   }
 }

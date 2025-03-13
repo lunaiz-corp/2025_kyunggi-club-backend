@@ -13,18 +13,14 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger'
 
 import { AuthGuard } from 'src/auth/auth.guard'
-import {
-  ClubEntity,
-  ClubTemplateEntity,
-} from 'src/common/repository/entity/club.entity'
+import { Club, ClubTemplate } from 'src/common/repository/schema/club.schema'
+import { Member } from 'src/common/repository/schema/member.schema'
 
 import { RolesService } from 'src/auth/roles.service'
 import { ClubService } from './club.service'
 
 import ClubTemplateMutateRequestDto from './dto/request/club-template-mutate.request.dto'
 import ClubAdminMutateRequestDto from './dto/request/club-admin-mutate.request.dto'
-
-import { MemberEntity } from 'src/common/repository/entity/member.entity'
 
 import APIException from 'src/common/dto/APIException.dto'
 
@@ -44,7 +40,7 @@ export class ClubController {
     summary: '동아리 목록 조회',
     description: '동아리 목록을 조회합니다.',
   })
-  async retrieveClubList(): Promise<ClubEntity[]> {
+  async retrieveClubList(): Promise<Club[]> {
     return await this.clubService.retrieveClubList()
   }
 
@@ -53,7 +49,7 @@ export class ClubController {
     summary: '동아리 정보 조회',
     description: '동아리 소개 페이지용 정보를 조회합니다.',
   })
-  async retrieveClubInfo(@Param('club') club: string): Promise<ClubEntity> {
+  async retrieveClubInfo(@Param('club') club: string): Promise<Club> {
     return await this.clubService.retrieveClubInfo(club)
   }
 
@@ -64,7 +60,7 @@ export class ClubController {
   })
   async retrieveClubApplicationForm(
     @Param('club') club: string,
-  ): Promise<(ClubTemplateEntity & { id: number })[]> {
+  ): Promise<(ClubTemplate & { id: number })[]> {
     return await this.clubService.retrieveClubApplicationForm(club)
   }
 
@@ -93,9 +89,7 @@ export class ClubController {
     description: '동아리 관리자 목록을 조회합니다.',
   })
   @ApiBearerAuth()
-  async retrieveClubAdmins(
-    @Param('club') club: string,
-  ): Promise<(MemberEntity & { club: string[] })[]> {
+  async retrieveClubAdmins(@Param('club') club: string): Promise<Member[]> {
     if (!this.rolesService.canActivate([club])) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }

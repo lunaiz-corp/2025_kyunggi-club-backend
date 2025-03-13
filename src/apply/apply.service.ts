@@ -2,8 +2,8 @@ import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common'
 import { HttpService } from '@nestjs/axios'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { InjectModel } from '@nestjs/mongoose'
+import { Model } from 'mongoose'
 
 import fs from 'node:fs'
 import crypto from 'node:crypto'
@@ -13,25 +13,20 @@ import { catchError, firstValueFrom } from 'rxjs'
 import { Cache } from 'cache-manager'
 
 import { customAlphabet } from 'nanoid'
-import { instanceToPlain } from 'class-transformer'
 
-import {
-  StudentEntity,
-  ParentEntity,
-  FormAnswerEntity,
-  ApplyEntity,
-  CurrentStatus,
-} from 'src/common/repository/entity/apply.entity'
+import { Apply, CurrentStatus } from 'src/common/repository/schema/apply.schema'
+import { PassSession } from 'src/common/repository/schema/pass.schema'
 
 import APIException from 'src/common/dto/APIException.dto'
 import PassHashResponseDto from './dto/response/pass-hash.response.dto'
 import PassCallbackResponseDto from './dto/response/pass-callback.response.dto'
 
 import SubmitApplicationRequestDto from './dto/request/submit-application.request.dto'
-import ApplicationStatusMutateRequestDto from './dto/request/application-status-mutate.request.dto'
+import ApplicationStatusMutateRequestDto, {
+  ApplicationStatusBulkMutateRequestDto,
+} from './dto/request/application-status-mutate.request.dto'
 import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
 import RegisterCiDiRequestDto from './dto/request/register-cidi.request.dto'
-import { PassEntity } from 'src/common/repository/entity/pass.entity'
 
 const KCP_API_CONSTANTS = {
   SITECD: process.env.NODE_ENV === 'development' ? 'AO0QE' : 'AKYT9',
@@ -55,20 +50,11 @@ export class ApplyService {
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
 
-    @InjectRepository(StudentEntity)
-    private readonly studentRepository: Repository<StudentEntity>,
+    @InjectModel(Apply.name)
+    private readonly applyModel: Model<Apply>,
 
-    @InjectRepository(ParentEntity)
-    private readonly parentRepository: Repository<ParentEntity>,
-
-    @InjectRepository(FormAnswerEntity)
-    private readonly formAnswerRepository: Repository<FormAnswerEntity>,
-
-    @InjectRepository(ApplyEntity)
-    private readonly applyRepository: Repository<ApplyEntity>,
-
-    @InjectRepository(PassEntity)
-    private readonly passDecryptedRepository: Repository<PassEntity>,
+    @InjectModel(PassSession.name)
+    private readonly passSessionModel: Model<PassSession>,
 
     private readonly httpService: HttpService,
   ) {
@@ -78,16 +64,16 @@ export class ApplyService {
   async getSelectChance(): Promise<{ [key: string]: number }> {
     // 현재 있는 모든 지원서를 동아리별로 나눠서 개수를 보낸다.
     // 현재 상태는 신경쓰지말고 지원서의 단순 개수만 보자.
-    const applications = await this.applyRepository.find({
-      relations: ['club'],
-    })
+    const applications = await this.applyModel.find()
 
     const selectChance = applications.reduce((acc, application) => {
-      if (!acc[application.club.id]) {
-        acc[application.club.id] = 0
-      }
+      application.answers.forEach((answer) => {
+        if (!acc[answer.club]) {
+          acc[answer.club] = 0
+        }
 
-      acc[application.club.id] += 1
+        acc[answer.club] += 1
+      })
 
       return acc
     }, {})
@@ -113,202 +99,160 @@ export class ApplyService {
     //   ).data,
     // )
 
-    const alreadyApplied = await this.studentRepository.findOne({
-      where: { id: userInfo.id },
+    const alreadyApplied = await this.applyModel.findOne({
+      student: { id: userInfo.id },
     })
 
     if (alreadyApplied) {
       throw new APIException(HttpStatus.CONFLICT, '이미 지원한 학생입니다.')
     }
 
-    await this.studentRepository.insert({
-      id: userInfo.id,
-      name: userInfo.name,
-      phone: userInfo.phone,
-      // ci: passData ? (passData.ci_url as string) : undefined,
-      // di: passData ? (passData.di_url as string) : undefined,
-    })
-
-    await this.parentRepository.insert({
-      name: parentInfo.name,
-      phone: parentInfo.phone,
-      relationship: parentInfo.relationship,
-      // ci: parentPassData ? (parentPassData.ci_url as string) : undefined,
-      // di: parentPassData ? (parentPassData.di_url as string) : undefined,
-    })
-
     const password = this.nanoid(6)
 
     const databaseQuery = {
       password,
 
-      student: { id: userInfo.id },
-      parent: { phone: parentInfo.phone },
-
-      status: CurrentStatus.WAITING,
+      student: {
+        id: userInfo.id,
+        name: userInfo.name,
+        phone: userInfo.phone,
+        // ci: userInfo.ci,
+        // di: userInfo.di,
+      },
+      parent: {
+        name: parentInfo.name,
+        phone: parentInfo.phone,
+        relationship: parentInfo.relationship,
+        // ci: parentInfo.ci,
+        // di: parentInfo.di,
+      },
     }
 
-    formAnswers.forEach(async (answers) => {
-      answers.answers.forEach(async (answer) => {
-        await this.formAnswerRepository.insert({
-          id: `${userInfo.id}-${answers.club}-${answer.id}`,
-          answer: answer.answer,
-          files: answer.files,
-        })
-      })
-
-      // TODO: 데이터베이스 꼬임... id값이 연동이 안되어서 추후에는 formAnswerRepository에서 직접 가져와야 하는 상황임.
-      await this.applyRepository.insert({
-        ...databaseQuery,
-        club: { id: answers.club },
-      })
+    // TODO: 데이터베이스 꼬임... 동아리 별 지망 값이 연동이 안되어서 추후에는 formAnswerRepository에서 직접 가져와야 하는 상황임.
+    await this.applyModel.create({
+      ...databaseQuery,
+      answers: formAnswers.map((answers) => ({
+        club: answers.club,
+        status: CurrentStatus.WAITING,
+        answers: answers.answers,
+      })),
     })
 
-    try {
-      await this.sendNotification(
-        userInfo.id,
-        formAnswers[0].club,
-        'SYSTEM',
-        `${userInfo.name} 님의 2025학년도 경기고등학교 이공계 동아리 지원서가 접수되었습니다.
-
-이공계동아리연합 선발 사이트에서 본인의 지원 상태, 지원서 확인을 위해서 위 접수 번호를 꼭 기억하고, 타인에게 노출되지 않도록 유의하세요.
-(접수 번호가 없을 경우 지원서 확인, 지필/면접 합격자 확인, 최종 등록 절차 진행 불가)
-
-** 접수 번호: ${password}
-
-본인, 혹은 본인의 자녀가 경기고등학교 이공계 동아리 접수를 하지 않은 경우, 고객센터로 문의해 주세요.`,
-      )
-    } catch (error) {
-      this.logger.error(error)
-
-      await this.httpService.axiosRef.post(process.env.DISCORD_WEBHOOK_URL, {
-        content: `**[알림]** ${userInfo.name} 님의 지원서 알림톡 전송에 실패했습니다.`,
-        embeds: [
+    await firstValueFrom(
+      this.httpService
+        .post(
+          `https://api-alimtalk.cloud.toast.com/alimtalk/v2.3/appkeys/${process.env.KAKAO_APP_KEY}/messages`,
           {
-            title: '발송 시도 정보',
-            fields: [
+            senderKey: process.env.KAKAO_SENDER_KEY,
+            templateCode: 'APPLY_SUBMITTED',
+
+            recipientList: [
               {
-                name: '학생 정보',
-                value: `학번: ${userInfo.id}\n이름: ${userInfo.name}\n전화번호: ${userInfo.phone}`,
-              },
-              {
-                name: '지원 동아리',
-                value: formAnswers.map((answers) => answers.club).join(', '),
-              },
-              {
-                name: '접수 번호',
-                value: password,
+                recipientNo: userInfo.phone,
+                templateParameter: {
+                  NAME: userInfo.name,
+                  PASSWORD: password,
+                },
               },
             ],
+
+            resendParameter: {
+              isResend: true,
+              resendSendNo: process.env.KAKAO_SENDER_PHONE,
+            },
           },
-        ],
-      })
-    }
+        )
+        .pipe(
+          catchError((error: AxiosError) => {
+            this.logger.error(error.response.data)
+
+            this.httpService.axiosRef.post(process.env.DISCORD_WEBHOOK_URL, {
+              content: `**[알림]** ${userInfo.name} 님의 지원서 알림톡 전송에 실패했습니다.`,
+              embeds: [
+                {
+                  title: '발송 시도 정보',
+                  fields: [
+                    {
+                      name: '학생 정보',
+                      value: `학번: ${userInfo.id}\n이름: ${userInfo.name}\n전화번호: ${userInfo.phone}`,
+                    },
+                    {
+                      name: '지원 동아리',
+                      value: formAnswers
+                        .map((answers) => answers.club)
+                        .join(', '),
+                    },
+                    {
+                      name: '접수 번호',
+                      value: password,
+                    },
+                  ],
+                },
+              ],
+            })
+
+            throw new APIException(500, '알림톡 전송에 실패했습니다.')
+          }),
+        ),
+    )
   }
 
   async retrieveApplicationsList(club: string) {
-    // Step 1: 특정 clubId를 포함하는 지원서만 가져옴
-    const filteredApplications = await this.applyRepository.find({
-      select: ['student', 'club', 'status'],
-      relations: ['student', 'club'],
-      where: { club: { id: club } },
+    // 특정 Club ID를 포함하는 모든 지원서 return
+    const applications = await this.applyModel.find({
+      answers: { $elemMatch: { club } },
     })
 
-    if (filteredApplications.length === 0) {
-      return {} // 특정 clubId에 해당하는 데이터가 없으면 빈 객체 반환
-    }
-
-    // Step 2: 해당 지원서의 studentId을 가져와서 해당 사용자의 모든 club 신청 데이터 조회
-    const studentIds = filteredApplications
-      .map((app) => app.student.id)
-      .filter(Boolean)
-
-    const allApplications = await this.applyRepository.find({
-      select: ['student', 'club', 'status'],
-      relations: ['student', 'club'],
-      where: studentIds.map((id) => ({ student: { id } })),
-    })
-
-    // Step 3: 그룹화하여 최종 데이터 변환
-    const grouped = allApplications.reduce(
-      (acc, apply) => {
-        const plainApply = instanceToPlain(apply) // BaseEntity 메서드 제거
-        const { status, club, id, ...rest } = plainApply // id 제거
-
-        // student의 ci, di 필드 삭제
-        if (rest.student) {
-          delete rest.student.ci
-          delete rest.student.di
+    // 현재 club값에 대한 status에 따라 분류
+    const grouped = applications.reduce((acc, application) => {
+      application.answers.forEach((answer) => {
+        if (!acc[answer.club]) {
+          acc[answer.club] = {}
         }
 
-        if (!acc[status]) {
-          acc[status] = {}
+        if (!acc[answer.club][answer.status]) {
+          acc[answer.club][answer.status] = []
         }
 
-        const userId = rest.student.id
-        if (!acc[status][userId]) {
-          acc[status][userId] = {
-            userInfo: { ...rest.student }, // student 객체를 userInfo로 변경
-            applingClubs: [], // club 리스트 저장할 배열
-          }
-        }
+        acc[answer.club][answer.status].push({
+          userInfo: {
+            id: application.student.id,
+            name: application.student.name,
+            phone: application.student.phone,
+          },
+          parentInfo: {
+            name: application.parent.name,
+            relationship: application.parent.relationship,
+            phone: application.parent.phone,
+          },
+        })
+      })
 
-        acc[status][userId].applingClubs.push(club.id) // club의 이름을 배열에 추가
-        return acc
-      },
-      {} as Record<string, Record<string, any>>,
-    )
+      return acc
+    }, {})
 
-    // 중첩 객체를 배열 형태로 변환
-    const result = Object.fromEntries(
-      Object.entries(grouped).map(([status, users]) => [
-        status,
-        Object.values(users),
-      ]),
-    )
-
-    return result
+    return grouped
   }
 
-  async sendBulkNotification(
-    ids: number[],
-    club: string,
-    type: 'SYSTEM' | 'MANUAL',
-    content: string,
-  ) {
-    const applications = await this.applyRepository.find({
-      where: {
-        student: ids.map((id) => ({ id })),
-        club: { id: club },
-      },
+  async sendBulkNotification(ids: number[], club: string, content: string) {
+    const shouldMms = new TextEncoder().encode(content).length > 90
+
+    const applications = await this.applyModel.find({
+      student: { id: { $in: ids } },
+      answers: { $elemMatch: { club } },
     })
 
-    const { data: alimTalk } = await firstValueFrom(
+    const { data: messaging } = await firstValueFrom(
       this.httpService
         .post(
-          `https://api-alimtalk.cloud.toast.com/friendtalk/v2.4/appkeys/${process.env.KAKAO_APP_KEY}/messages`,
+          `https://api-sms.cloud.toast.com/sms/v3.0/appkeys/${process.env.KAKAO_APP_KEY}/sender/${shouldMms ? 'mms' : 'sms'}`,
           {
-            senderKey: process.env.KAKAO_SENDER_KEY,
+            title: shouldMms ? '[이공계동아리연합]' : undefined,
+            body: content,
+            sendNo: process.env.KAKAO_SENDER_PHONE,
+
             recipientList: applications.map((application) => ({
               recipientNo: application.student.phone,
-              content,
-              buttons:
-                type === 'SYSTEM'
-                  ? [
-                      {
-                        ordering: 1,
-                        type: 'WL',
-                        name: '지원서 상태 확인',
-                        linkMo: 'https://kyunggi.club/apply/status',
-                        linkPc: 'https://kyunggi.club/apply/status',
-                      },
-                    ]
-                  : [],
-              resendParameter: {
-                isResend: true,
-                resendSendNo: process.env.KAKAO_SENDER_PHONE,
-              },
-              isAd: false,
             })),
           },
         )
@@ -320,16 +264,13 @@ export class ApplyService {
         ),
     )
 
-    return alimTalk
+    return messaging
   }
 
   async retrieveApplication(id: number, club: string) {
-    const application = await this.applyRepository.findOne({
-      where: {
-        student: { id },
-        club: { id: club },
-      },
-      relations: ['student', 'club', 'parent'],
+    const application = await this.applyModel.findOne({
+      student: { id },
+      answers: { $elemMatch: { club } },
     })
 
     if (!application) {
@@ -338,10 +279,6 @@ export class ApplyService {
         '존재하지 않는 지원서입니다.',
       )
     }
-
-    const answers = (await this.formAnswerRepository.find()).filter((answer) =>
-      answer.id.startsWith(`${id}-${club}-`),
-    )
 
     return {
       userInfo: {
@@ -356,10 +293,11 @@ export class ApplyService {
         phone: application.parent?.phone,
       },
 
-      currentStatus: application.status,
+      currentStatus: application.answers.find((a) => a.club === club).status,
 
-      formAnswers: answers
-        .map((answer) => ({
+      formAnswers: application.answers
+        .find((a) => a.club === club)
+        .answers.map((answer) => ({
           ...answer,
           id: Number(answer.id.split('-')[2]),
         }))
@@ -371,28 +309,21 @@ export class ApplyService {
     id: number,
     body: ApplicationStatusRetrieveRequestDto,
   ) {
-    const applications = await this.applyRepository.find({
-      where: {
-        student: { id, name: body.studentName },
-        password: body.password,
-      },
-      relations: ['student', 'club', 'parent'],
+    const application = await this.applyModel.findOne({
+      student: { id, name: body.studentName },
+      password: body.password,
     })
 
-    if (applications.length === 0) {
+    if (!application) {
       throw new APIException(
         HttpStatus.NOT_FOUND,
         '존재하지 않는 지원서입니다.',
       )
     }
 
-    if (applications.some((application) => !application.student.ci)) {
+    if (application.student.ci) {
       // 부모 CI도 없는지 확인
-      if (
-        applications.some(
-          (application) => application.parent && !application.parent.ci,
-        )
-      ) {
+      if (application.parent && !application.parent.ci) {
         throw new APIException(
           HttpStatus.LOCKED,
           '실명 인증이 완료되지 않은 사용자입니다.',
@@ -400,64 +331,49 @@ export class ApplyService {
       }
     }
 
-    const answers = (await this.formAnswerRepository.find()).filter((answer) =>
-      answer.id.startsWith(`${id}-`),
-    )
-
     return {
       userInfo: {
-        ...applications[0].student,
+        ...application.student,
         ci: undefined,
         di: undefined,
       },
 
-      applingClubs: applications
-        .sort((a, b) => a.club.name.localeCompare(b.club.name))
-        .map((application) => application.club.id),
-      currentStatus: applications
-        .sort((a, b) => a.club.name.localeCompare(b.club.name))
-        .map((application) => ({
-          club: application.club.id,
-          status: application.status,
-        })),
+      applingClubs: application.answers
+        .map((application) => application.club)
+        .sort((a, b) => a.localeCompare(b)),
 
-      formAnswers: applications
-        .sort((a, b) => a.club.name.localeCompare(b.club.name))
+      currentStatus: application.answers
         .map((application) => ({
-          club: application.club.id,
-          answers: answers
-            .filter((answer) =>
-              answer.id.startsWith(`${id}-${application.club.id}`),
-            )
-            .map((answer) => ({
-              ...answer,
-              id: Number(answer.id.split('-')[2]),
-            }))
-            .sort((a, b) => a.id - b.id),
-        })),
+          club: application.club,
+          status: application.status,
+        }))
+        .sort((a, b) => a.club.localeCompare(b.club)),
+
+      formAnswers: application.answers
+        .map((application) => {
+          return {
+            club: application.club,
+            answers: application.answers,
+          }
+        })
+        .sort((a, b) => a.club.localeCompare(b.club)),
     }
   }
 
   async registerCiDi(id: number, body: RegisterCiDiRequestDto) {
-    const applications = await this.applyRepository.find({
-      where: {
-        student: { id, name: body.studentName },
-        password: body.password,
-      },
-      relations: ['student', 'club', 'parent'],
+    const application = await this.applyModel.findOne({
+      student: { id, name: body.studentName },
+      password: body.password,
     })
 
-    if (applications.length === 0) {
+    if (application) {
       throw new APIException(
         HttpStatus.NOT_FOUND,
         '존재하지 않는 지원서입니다.',
       )
     }
 
-    if (
-      applications.every((application) => application.student.ci) ||
-      applications.every((application) => application.parent.ci)
-    ) {
+    if (application.student.ci || application.parent.ci) {
       throw new APIException(
         HttpStatus.LOCKED,
         '이미 실명 인증된 사용자입니다.',
@@ -466,10 +382,8 @@ export class ApplyService {
 
     const decryptedData = JSON.parse(
       (
-        await this.passDecryptedRepository.findOne({
-          where: {
-            refId: body.verifiedRefId,
-          },
+        await this.passSessionModel.findOne({
+          refId: body.verifiedRefId,
         })
       )?.data ?? '{}',
     )
@@ -486,37 +400,41 @@ export class ApplyService {
       25
 
     if (isParent) {
-      if (applications[0].parent.phone !== decryptedData.phone_no) {
+      if (application.parent.phone !== decryptedData.phone_no) {
         throw new APIException(
           HttpStatus.FORBIDDEN,
           '등록된 전화번호와 인증한 전화번호가 일치하지 않습니다.',
         )
       }
 
-      await this.parentRepository.update(
+      await this.applyModel.updateOne(
         {
-          phone: applications[0].parent.phone,
+          parent: {
+            phone: application.parent.phone,
+          },
         },
         {
-          ci: decryptedData.ci,
-          di: decryptedData.di,
+          parent: {
+            ci: decryptedData.ci,
+            di: decryptedData.di,
+          },
         },
       )
     } else {
-      if (applications[0].student.phone !== decryptedData.phone_no) {
+      if (application.student.phone !== decryptedData.phone_no) {
         throw new APIException(
           HttpStatus.FORBIDDEN,
           '등록된 전화번호와 인증한 전화번호가 일치하지 않습니다.',
         )
       }
 
-      await this.studentRepository.update(
+      await this.applyModel.updateOne(
+        { student: { id } },
         {
-          id,
-        },
-        {
-          ci: decryptedData.ci,
-          di: decryptedData.di,
+          student: {
+            ci: decryptedData.ci,
+            di: decryptedData.di,
+          },
         },
       )
     }
@@ -527,11 +445,9 @@ export class ApplyService {
     id: number,
     data: ApplicationStatusMutateRequestDto,
   ) {
-    const application = await this.applyRepository.findOne({
-      where: {
-        student: { id },
-        club: { id: club },
-      },
+    const application = await this.applyModel.findOne({
+      student: { id },
+      answers: { $elemMatch: { club } },
     })
 
     if (!application) {
@@ -541,43 +457,65 @@ export class ApplyService {
       )
     }
 
-    await this.applyRepository.update(
+    await this.applyModel.updateOne(
       {
         student: { id },
-        club: { id: club },
+        answers: { $elemMatch: { club } },
       },
       {
-        status: data.status,
+        $set: {
+          'answers.$.status': data.status,
+        },
       },
     )
   }
 
-  async sendNotification(
-    id: number,
+  async updateApplicationStatusBulk(
     club: string,
-    type: 'SYSTEM' | 'MANUAL',
-    content: string,
+    data: ApplicationStatusBulkMutateRequestDto,
   ) {
-    const application = await this.applyRepository.findOne({
-      where: {
-        student: { id },
-        club: { id: club },
-      },
+    const applications = await this.applyModel.find({
+      student: { id: { $in: data.ids } },
+      answers: { $elemMatch: { club } },
     })
 
-    if (type === 'MANUAL' && !application) {
+    if (applications.length !== data.ids.length) {
+      throw new APIException(
+        HttpStatus.NOT_FOUND,
+        '존재하지 않는 지원서가 포함되어 있습니다.',
+      )
+    }
+
+    await this.applyModel.updateMany(
+      {
+        student: { id: { $in: data.ids } },
+        answers: { $elemMatch: { club } },
+      },
+      {
+        $set: {
+          'answers.$.status': data.status,
+        },
+      },
+    )
+  }
+
+  async sendNotification(id: number, club: string, content: string) {
+    const application = await this.applyModel.findOne({
+      student: { id },
+      answers: { $elemMatch: { club } },
+    })
+
+    if (!application) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
-    return this.sendBulkNotification([id], club, type, content)
+    return this.sendBulkNotification([id], club, content)
   }
 
   async finalSubmit(club: string, id: number) {
-    const application = await this.applyRepository.findOne({
-      where: {
-        student: { id },
-        club: { id: club },
-      },
+    const application = await this.applyModel.findOne({
+      student: { id },
+      answers: { $elemMatch: { club } },
     })
 
     if (!application) {
@@ -587,10 +525,11 @@ export class ApplyService {
       )
     }
 
-    await this.applyRepository.update(
+    // TODO: 추합 떄 말고는 FINAL_PASSED로
+    await this.applyModel.updateOne(
       {
         student: { id },
-        club: { id: club },
+        answers: { $elemMatch: { club } },
       },
       {
         status: CurrentStatus.FINAL_SUBMISSION,
@@ -817,7 +756,7 @@ export class ApplyService {
 
     await this.cacheManager.del(`pass-hashdata:${orderId}`)
 
-    await this.passDecryptedRepository.save({
+    await this.passSessionModel.create({
       refId: orderId,
       data: JSON.stringify(decryptedData),
     })

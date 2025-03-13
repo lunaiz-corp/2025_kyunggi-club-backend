@@ -1,15 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger'
 
-import {
-  BaseEntity,
-  Column,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  PrimaryColumn,
-} from 'typeorm'
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import mongoose, { HydratedDocument } from 'mongoose'
 
-import { ClubEntity } from './club.entity'
+import { Club } from './club.schema'
 
 export enum MemberPermission {
   // 최고 관리자 (운영팀)
@@ -31,44 +25,41 @@ export enum MemberRole {
   CLUB_MEMBER = 'CLUB_MEMBER',
 }
 
-@Entity({ name: 'member' })
-export class MemberEntity extends BaseEntity {
+@Schema()
+export class Member {
   @ApiProperty({ type: String })
-  @PrimaryColumn({ type: 'text' })
+  @Prop({ required: true, unique: true, type: String })
   email: string
 
   @ApiProperty({ type: String })
-  @Column({ type: 'text' })
+  @Prop({ required: true, type: String })
   name: string
 
   @ApiProperty({ type: String })
-  @PrimaryColumn({ type: 'text' })
+  @Prop({ required: true, unique: true, type: String })
   phone: string
 
   @ApiProperty({ type: String, required: false })
-  @Column({ type: 'text', nullable: true })
+  @Prop({ required: false, type: String })
   password?: string
 
   @ApiProperty({ type: () => Object.values(MemberRole) })
-  @Column({ type: 'text' })
+  @Prop({ required: true, enum: Object.values(MemberRole) })
   role: MemberRole
 
   @ApiProperty({ type: () => Object.values(MemberPermission) })
-  @Column({ type: 'text' })
+  @Prop({ required: true, enum: Object.values(MemberPermission) })
   permission: MemberPermission
 
-  @ApiProperty({ type: () => ClubEntity })
-  @ManyToMany(() => ClubEntity, (club) => club.id, {
-    onDelete: 'SET NULL',
-    onUpdate: 'CASCADE',
-  })
-  @JoinTable()
-  club: ClubEntity[]
+  @ApiProperty({ type: () => Club })
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Club' }] })
+  club: Club[]
 
   @ApiProperty({ type: Date })
-  @Column({
-    type: 'timestamp with time zone',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
-  created_at: Date
+  @Prop({ required: true, type: Date, default: Date.now })
+  createdAt: Date
 }
+
+export type MemberDocument = HydratedDocument<Member>
+
+export const MemberSchema = SchemaFactory.createForClass(Member)

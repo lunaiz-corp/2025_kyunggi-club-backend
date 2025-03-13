@@ -10,14 +10,16 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
+import { FastifyRequest } from 'fastify'
+
 import { AuthService } from './auth.service'
 import { AuthGuard } from './auth.guard'
 
 import SignInRequestDto from './dto/request/sign-in.request.dto'
 import ClubAdminSetpasswordRequestDto from './dto/request/club-admin-setpassword.request.dto'
-import { MemberEntity } from 'src/common/repository/entity/member.entity'
 import SignInResponseDto from './dto/response/sign-in.response.dto'
-import { FastifyRequest } from 'fastify'
+
+import { Member } from 'src/common/repository/schema/member.schema'
 
 @ApiTags('Auth - 관리자 로그인 API')
 @Controller('auth')
@@ -42,7 +44,7 @@ export class AuthController {
   })
   async setAdminPassword(
     @Body() body: ClubAdminSetpasswordRequestDto,
-  ): Promise<Partial<MemberEntity>> {
+  ): Promise<Partial<Member>> {
     return await this.authService.setAdminPassword(body)
   }
 
@@ -54,8 +56,8 @@ export class AuthController {
   })
   @ApiBearerAuth()
   getProfile(
-    @Req() req: FastifyRequest & { user: MemberEntity & { club: string[] } },
-  ): MemberEntity & { club: string[] } {
+    @Req() req: FastifyRequest & { user: Member & { club: string[] } },
+  ): Member & { club: string[] } {
     return req.user
   }
 }

@@ -1,17 +1,15 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common'
 
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository, UpdateResult, DeleteResult, InsertResult } from 'typeorm'
-
 import { RolesService } from 'src/auth/roles.service'
 import APIException from 'src/common/dto/APIException.dto'
 
-import {
-  ScheduleEntity,
-  ScheduleCategory,
-} from 'src/common/repository/entity/schedule.entity'
-
 import ScheduleMutateRequestDto from './dto/request/schedule-mutate.request.dto'
+import { InjectModel } from '@nestjs/mongoose'
+import {
+  Schedule,
+  ScheduleCategory,
+} from 'src/common/repository/schema/schedule.schema'
+import { Model } from 'mongoose'
 
 @Injectable()
 export class ScheduleService {
@@ -35,11 +33,11 @@ export class ScheduleService {
   constructor(
     private readonly rolesService: RolesService,
 
-    @InjectRepository(ScheduleEntity)
-    private readonly scheduleRepository: Repository<ScheduleEntity>,
+    @InjectModel(Schedule.name)
+    private readonly scheduleModel: Model<Schedule>,
   ) {}
 
-  async retrieveSchedulesList(type?: string): Promise<ScheduleEntity[]> {
+  async retrieveSchedulesList(type?: string): Promise<Schedule[]> {
     const allowedCategory = type
       ? this.types?.[type.toUpperCase()]
       : new Set([
@@ -49,55 +47,48 @@ export class ScheduleService {
           ScheduleCategory.INTERVIEW,
         ])
 
-    const schedules = await this.scheduleRepository.find()
-
-    return schedules
-      .filter((schedule) => {
-        return type ? allowedCategory.has(schedule.category) : true
+    return await this.scheduleModel
+      .find({
+        category: type ? { $in: Array.from(allowedCategory) } : undefined,
       })
-      .sort((a, b) => {
-        return a.start_at.getTime() - b.start_at.getTime()
-      })
+      .sort('-startAt')
+      .exec()
   }
 
-  async createSchedule(data: ScheduleMutateRequestDto): Promise<InsertResult> {
-    return this.scheduleRepository.insert(data)
+  async createSchedule(data: ScheduleMutateRequestDto) {
+    await this.scheduleModel.create(data)
   }
 
-  async updateSchedule(
-    id: string,
-    data: ScheduleMutateRequestDto,
-  ): Promise<UpdateResult> {
+  async updateSchedule(id: string, data: ScheduleMutateRequestDto) {
     if (!this.rolesService.canRootActivate()) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
-    const schedule = await this.scheduleRepository.findOne({
-      where: { id },
-    })
+    const schedule = await this.scheduleModel.findOne({ id })
 
     if (!schedule) {
       throw new APIException(HttpStatus.NOT_FOUND, '일정을 찾을 수 없습니다.')
     }
 
-    return this.scheduleRepository.update(id, {
-      ...data,
-    })
+    return this.scheduleModel.updateOne(
+      { id },
+      {
+        ...data,
+      },
+    )
   }
 
-  async deleteSchedule(id: string): Promise<DeleteResult> {
+  async deleteSchedule(id: string) {
     if (!this.rolesService.canRootActivate()) {
       throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
     }
 
-    const schedule = await this.scheduleRepository.findOne({
-      where: { id },
-    })
+    const schedule = await this.scheduleModel.findOne({ id })
 
     if (!schedule) {
       throw new APIException(HttpStatus.NOT_FOUND, '일정을 찾을 수 없습니다.')
     }
 
-    return this.scheduleRepository.delete(id)
+    await this.scheduleModel.deleteOne({ id })
   }
 }

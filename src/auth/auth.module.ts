@@ -1,15 +1,20 @@
 import { Module } from '@nestjs/common'
 import { JwtModule } from '@nestjs/jwt'
-import { TypeOrmModule } from '@nestjs/typeorm'
 
-import { MemberEntity } from 'src/common/repository/entity/member.entity'
+import { MongooseModule } from '@nestjs/mongoose'
+
+import {
+  Member,
+  MemberSchema,
+} from 'src/common/repository/schema/member.schema'
 
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MemberEntity]),
+    MongooseModule.forFeature([{ name: Member.name, schema: MemberSchema }]),
+
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET,

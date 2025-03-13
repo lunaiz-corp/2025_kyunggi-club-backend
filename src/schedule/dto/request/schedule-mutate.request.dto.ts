@@ -1,4 +1,4 @@
-import { ScheduleCategory } from 'src/common/repository/entity/schedule.entity'
+import { ScheduleCategory } from 'src/common/repository/schema/schedule.schema'
 
 export class ScheduleMutateRequestDto {
   /**

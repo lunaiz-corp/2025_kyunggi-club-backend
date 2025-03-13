@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 
-import { NoticeEntity } from 'src/common/repository/entity/notice.entity'
+import { Notice } from 'src/common/repository/schema/notice.schema'
 import { AuthGuard } from 'src/auth/auth.guard'
 
 import { NoticeService } from './notice.service'
@@ -39,7 +39,7 @@ export class NoticeController {
   })
   async retrieveNoticesList(
     @Param('board') board: string,
-  ): Promise<Omit<NoticeEntity, 'category'>[]> {
+  ): Promise<Omit<Notice, 'category'>[]> {
     return await this.noticeService.retrieveNoticesList(board)
   }
 
@@ -51,7 +51,7 @@ export class NoticeController {
   async retrieveNotice(
     @Param('board') board: string,
     @Param('id') id: number,
-  ): Promise<Omit<NoticeEntity, 'category'>> {
+  ): Promise<Omit<Notice, 'category'>> {
     return await this.noticeService.retrieveNotice(board, id)
   }
 
