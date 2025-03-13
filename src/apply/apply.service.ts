@@ -215,6 +215,9 @@ export class ApplyService {
         }
 
         acc[answer.club][answer.status].push({
+          applingClubs: application.answers.map(
+            (application) => application.club,
+          ),
           userInfo: {
             id: application.student.id,
             name: application.student.name,
@@ -231,7 +234,7 @@ export class ApplyService {
       return acc
     }, {})
 
-    return grouped
+    return grouped[club]
   }
 
   async sendBulkNotification(ids: number[], club: string, content: string) {
@@ -268,10 +271,12 @@ export class ApplyService {
   }
 
   async retrieveApplication(id: number, club: string) {
-    const application = await this.applyModel.findOne({
-      student: { id },
-      answers: { $elemMatch: { club } },
-    })
+    const application = (
+      await this.applyModel.findOne({
+        'student.id': id,
+        answers: { $elemMatch: { club } },
+      })
+    ).toObject()
 
     if (!application) {
       throw new APIException(
@@ -297,11 +302,7 @@ export class ApplyService {
 
       formAnswers: application.answers
         .find((a) => a.club === club)
-        .answers.map((answer) => ({
-          ...answer,
-          id: Number(answer.id.split('-')[2]),
-        }))
-        .sort((a, b) => a.id - b.id),
+        .answers.sort((a, b) => a.id - b.id),
     }
   }
 
@@ -310,7 +311,8 @@ export class ApplyService {
     body: ApplicationStatusRetrieveRequestDto,
   ) {
     const application = await this.applyModel.findOne({
-      student: { id, name: body.studentName },
+      'student.id': id,
+      'student.name': body.studentName,
       password: body.password,
     })
 
@@ -321,7 +323,7 @@ export class ApplyService {
       )
     }
 
-    if (application.student.ci) {
+    if (!application.student.ci) {
       // 부모 CI도 없는지 확인
       if (application.parent && !application.parent.ci) {
         throw new APIException(
@@ -362,7 +364,8 @@ export class ApplyService {
 
   async registerCiDi(id: number, body: RegisterCiDiRequestDto) {
     const application = await this.applyModel.findOne({
-      student: { id, name: body.studentName },
+      'student.id': id,
+      'student.name': body.studentName,
       password: body.password,
     })
 
@@ -409,14 +412,12 @@ export class ApplyService {
 
       await this.applyModel.updateOne(
         {
-          parent: {
-            phone: application.parent.phone,
-          },
+          'parent.phone': application.parent.phone,
         },
         {
-          parent: {
-            ci: decryptedData.ci,
-            di: decryptedData.di,
+          $set: {
+            'parent.ci': decryptedData.ci,
+            'parent.di': decryptedData.di,
           },
         },
       )
@@ -429,11 +430,11 @@ export class ApplyService {
       }
 
       await this.applyModel.updateOne(
-        { student: { id } },
+        { 'student.id': id },
         {
-          student: {
-            ci: decryptedData.ci,
-            di: decryptedData.di,
+          $set: {
+            'student.ci': decryptedData.ci,
+            'student.di': decryptedData.di,
           },
         },
       )
@@ -446,7 +447,7 @@ export class ApplyService {
     data: ApplicationStatusMutateRequestDto,
   ) {
     const application = await this.applyModel.findOne({
-      student: { id },
+      'student.id': id,
       answers: { $elemMatch: { club } },
     })
 
@@ -459,7 +460,7 @@ export class ApplyService {
 
     await this.applyModel.updateOne(
       {
-        student: { id },
+        'student.id': id,
         answers: { $elemMatch: { club } },
       },
       {
@@ -475,7 +476,7 @@ export class ApplyService {
     data: ApplicationStatusBulkMutateRequestDto,
   ) {
     const applications = await this.applyModel.find({
-      student: { id: { $in: data.ids } },
+      'student.id': { $in: data.ids },
       answers: { $elemMatch: { club } },
     })
 
@@ -486,22 +487,66 @@ export class ApplyService {
       )
     }
 
-    await this.applyModel.updateMany(
-      {
-        student: { id: { $in: data.ids } },
-        answers: { $elemMatch: { club } },
-      },
-      {
-        $set: {
-          'answers.$.status': data.status,
+    function getNextStatus(currentStatus: CurrentStatus, isPassed: boolean) {
+      if (!isPassed) {
+        switch (currentStatus) {
+          case CurrentStatus.WAITING:
+            return CurrentStatus.DOCUMENT_REJECTED
+          case CurrentStatus.DOCUMENT_PASSED:
+            return CurrentStatus.EXAM_REJECTED
+          case CurrentStatus.EXAM_PASSED:
+            return CurrentStatus.INTERVIEW_REJECTED
+          default:
+            return null
+        }
+      } else {
+        switch (currentStatus) {
+          case CurrentStatus.WAITING:
+            return CurrentStatus.DOCUMENT_PASSED
+          case CurrentStatus.DOCUMENT_PASSED:
+            return CurrentStatus.EXAM_PASSED
+          case CurrentStatus.EXAM_PASSED:
+            return CurrentStatus.INTERVIEW_PASSED
+          default:
+            return null
+        }
+      }
+    }
+
+    const jobs = []
+
+    jobs.push(
+      ...data.ids.map((id) => ({
+        filter: {
+          'student.id': id,
+          answers: { $elemMatch: { club } },
         },
-      },
+        update: {
+          $set: {
+            'answers.$.status': getNextStatus(
+              applications
+                .find((a) => a.student.id === id)
+                .answers.find((a) => a.club === club).status,
+              data.status === 'PASSED',
+            ),
+          },
+        },
+      })),
+    )
+
+    await this.applyModel.bulkWrite(
+      jobs.map((job) => ({
+        updateOne: {
+          filter: job.filter,
+          update: job.update,
+        },
+      })),
     )
   }
 
   async sendNotification(id: number, club: string, content: string) {
     const application = await this.applyModel.findOne({
-      student: { id },
+      'student.id': id,
       answers: { $elemMatch: { club } },
     })
 
@@ -514,7 +559,7 @@ export class ApplyService {
 
   async finalSubmit(club: string, id: number) {
     const application = await this.applyModel.findOne({
-      student: { id },
+      'student.id': id,
       answers: { $elemMatch: { club } },
     })
 
@@ -528,11 +573,13 @@ export class ApplyService {
     // TODO: 추합 떄 말고는 FINAL_PASSED로
     await this.applyModel.updateOne(
       {
-        student: { id },
+        'student.id': id,
         answers: { $elemMatch: { club } },
       },
       {
-        status: CurrentStatus.FINAL_SUBMISSION,
+        $set: {
+          status: CurrentStatus.FINAL_SUBMISSION,
+        },
       },
     )
   }

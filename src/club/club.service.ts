@@ -138,10 +138,10 @@ export class ClubService {
 
     const admins = await this.memberModel
       .find({
-        club: { $elemMatch: { id } },
+        club: { $elemMatch: id },
         role: { $ne: MemberRole.OWNER },
       })
-      .select('email name phone role')
+      .select('-password -permission -club -createdAt -_id -__v')
       .exec()
 
     // 직급 단위로 sorting

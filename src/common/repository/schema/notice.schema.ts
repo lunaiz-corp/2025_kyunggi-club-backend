@@ -1,28 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger'
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import mongoose, { HydratedDocument } from 'mongoose'
+import { HydratedDocument } from 'mongoose'
 
-@Schema()
-export class NoticeCategory {
-  @ApiProperty({ type: String })
-  @Prop({ required: true, unique: true, type: String })
-  id: string
-
-  @ApiProperty({ type: String })
-  @Prop({ required: true, type: String })
-  name: string
+export enum NoticeCategory {
+  WWW = 'WWW',
+  ADMIN = 'ADMIN',
 }
 
 @Schema()
 export class Notice {
   @ApiProperty({ type: Number })
-  // @PrimaryGeneratedColumn({ type: 'bigint' })
   @Prop({ required: true, unique: true, type: Number })
   id: number
 
-  @ApiProperty({ type: () => NoticeCategory })
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'NoticeCategory' })
+  @ApiProperty({ type: () => Object.values(NoticeCategory) })
+  @Prop({ required: true, enum: Object.values(NoticeCategory) })
   category: NoticeCategory
 
   @ApiProperty({ type: String })
@@ -39,7 +32,5 @@ export class Notice {
 }
 
 export type NoticeDocument = HydratedDocument<Notice>
-export type NoticeCategoryDocument = HydratedDocument<NoticeCategory>
 
 export const NoticeSchema = SchemaFactory.createForClass(Notice)
-export const NoticeCategorySchema = SchemaFactory.createForClass(NoticeCategory)

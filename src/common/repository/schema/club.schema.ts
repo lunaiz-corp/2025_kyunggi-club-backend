@@ -62,3 +62,7 @@ export type ClubTemplateDocument = HydratedDocument<ClubTemplate>
 
 export const ClubSchema = SchemaFactory.createForClass(Club)
 export const ClubTemplateSchema = SchemaFactory.createForClass(ClubTemplate)
+
+ClubSchema.set('id', false)
+ClubSchema.set('toObject', { virtuals: true })
+ClubSchema.set('toJSON', { virtuals: true })

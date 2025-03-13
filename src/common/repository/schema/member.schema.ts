@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import mongoose, { HydratedDocument } from 'mongoose'
+import { HydratedDocument } from 'mongoose'
 
 import { Club } from './club.schema'
 
@@ -36,7 +36,7 @@ export class Member {
   name: string
 
   @ApiProperty({ type: String })
-  @Prop({ required: true, unique: true, type: String })
+  @Prop({ required: true, type: String })
   phone: string
 
   @ApiProperty({ type: String, required: false })
@@ -52,7 +52,7 @@ export class Member {
   permission: MemberPermission
 
   @ApiProperty({ type: () => Club })
-  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Club' }] })
+  @Prop({ type: [{ required: true, type: String, ref: 'Club' }] })
   club: Club[]
 
   @ApiProperty({ type: Date })

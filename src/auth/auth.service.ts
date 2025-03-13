@@ -38,9 +38,13 @@ export class AuthService {
   }
 
   async signIn(email: string, password: string): Promise<SignInResponseDto> {
-    const user = await this.memberModel.findOne({
-      email,
-    })
+    const user = (
+      await this.memberModel
+        .findOne({
+          email,
+        })
+        .exec()
+    ).toObject()
 
     if (!user) {
       throw new APIException(
@@ -74,7 +78,7 @@ export class AuthService {
       accessToken: await this.jwtService.signAsync(
         {
           sub: user.email,
-          club: user.club.map((x) => x.id),
+          club: user.club,
           ...tokenUser,
         },
         {
@@ -101,14 +105,13 @@ export class AuthService {
 
     await this.memberModel.updateOne(
       { email: savedRequest.email },
-      { password: await this.hashPassword(data.password) },
+      { $set: { password: await this.hashPassword(data.password) } },
     )
 
     await this.cacheManager.del(`password-request:${data.pincode}`)
 
-    return this.memberModel.findOne({
-      where: { email: savedRequest.email },
-      select: ['email', 'name', 'phone', 'role', 'permission'],
-    })
+    return this.memberModel
+      .findOne({ email: savedRequest.email })
+      .select('-password -club -createdAt')
   }
 }

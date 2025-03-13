@@ -5,7 +5,10 @@ import { Cache } from 'cache-manager'
 
 import { Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
-import { Notice } from 'src/common/repository/schema/notice.schema'
+import {
+  Notice,
+  NoticeCategory,
+} from 'src/common/repository/schema/notice.schema'
 
 import APIException from 'src/common/dto/APIException.dto'
 import NoticeMutateRequestDto from './dto/request/notice-mutate.request.dto'
@@ -30,8 +33,11 @@ export class NoticeService {
     if (cachedNotices) return cachedNotices
 
     const notices = await this.noticeModel
-      .find({ category: { id: board } })
-      .select('id title createdAt')
+      .find({
+        category:
+          NoticeCategory[board.toUpperCase() as keyof typeof NoticeCategory],
+      })
+      .select('-category -_id -__v')
       .sort('-createdAt')
       .exec()
 
@@ -48,7 +54,8 @@ export class NoticeService {
     if (cachedNotice) return cachedNotice
 
     const notice = await this.noticeModel.findOne({
-      category: { id: board },
+      category:
+        NoticeCategory[board.toUpperCase() as keyof typeof NoticeCategory],
       id,
     })
 
@@ -65,8 +72,12 @@ export class NoticeService {
 
   async createNotice(board: string, data: NoticeMutateRequestDto) {
     await this.cacheManager.del(`notice:${board}`)
+
+    const count = await this.noticeModel.countDocuments()
     await this.noticeModel.create({
-      category: { id: board },
+      id: count + 1,
+      category:
+        NoticeCategory[board.toUpperCase() as keyof typeof NoticeCategory],
       title: data.title,
       content: data.content,
     })
@@ -77,7 +88,11 @@ export class NoticeService {
     await this.cacheManager.del(`notice:${board}:${id}`)
 
     await this.noticeModel.updateOne(
-      { category: { id: board }, id },
+      {
+        category:
+          NoticeCategory[board.toUpperCase() as keyof typeof NoticeCategory],
+        id,
+      },
       {
         title: data.title,
         content: data.content,
@@ -89,6 +104,10 @@ export class NoticeService {
     await this.cacheManager.del(`notice:${board}`)
     await this.cacheManager.del(`notice:${board}:${id}`)
 
-    await this.noticeModel.deleteOne({ category: { id: board }, id })
+    await this.noticeModel.deleteOne({
+      category:
+        NoticeCategory[board.toUpperCase() as keyof typeof NoticeCategory],
+      id,
+    })
   }
 }

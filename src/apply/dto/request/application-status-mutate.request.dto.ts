@@ -4,8 +4,9 @@ export class ApplicationStatusMutateRequestDto {
   status: CurrentStatus
 }
 
-export class ApplicationStatusBulkMutateRequestDto extends ApplicationStatusMutateRequestDto {
-  ids: string[]
+export class ApplicationStatusBulkMutateRequestDto {
+  ids: number[]
+  status: 'PASSED' | 'REJECTED'
 }
 
 export default ApplicationStatusMutateRequestDto

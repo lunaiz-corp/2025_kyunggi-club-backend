@@ -10,7 +10,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger'
 
 import { Schedule } from 'src/common/repository/schema/schedule.schema'
 import { AuthGuard } from 'src/auth/auth.guard'
@@ -30,6 +36,7 @@ export class ScheduleController {
     summary: '일정 목록 조회',
     description: '일정 목록을 조회합니다.',
   })
+  @ApiQuery({ name: 'type', required: false })
   async retrieveSchedulesList(
     @Query('type') type?: string,
   ): Promise<Schedule[]> {

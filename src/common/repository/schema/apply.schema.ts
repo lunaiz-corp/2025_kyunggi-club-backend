@@ -58,8 +58,8 @@ export class Parent {
 }
 
 export class FormAnswer {
-  @ApiProperty({ type: String, description: '질문 번호' })
-  id: string
+  @ApiProperty({ type: Number, description: '질문 번호' })
+  id: number
 
   @ApiProperty({ type: String, description: '답변' })
   answer: string
@@ -75,12 +75,34 @@ export class Apply {
   password: string
 
   @ApiProperty({ type: () => Student })
-  @Prop({ required: true, type: Student })
-  student: Student
+  @Prop(
+    raw({ id: Number, name: String, phone: String, ci: String, di: String }),
+  )
+  student: {
+    id: number
+    name: string
+    phone: string
+    ci?: string
+    di?: string
+  }
 
   @ApiProperty({ type: () => Parent })
-  @Prop({ required: true, type: Parent })
-  parent: Parent
+  @Prop(
+    raw({
+      name: String,
+      phone: String,
+      relationship: String,
+      ci: String,
+      di: String,
+    }),
+  )
+  parent: {
+    name: string
+    phone: string
+    relationship: string
+    ci?: string
+    di?: string
+  }
 
   @ApiProperty({
     type: () => ({
@@ -100,7 +122,7 @@ export class Apply {
         },
         answers: [
           {
-            id: String,
+            id: Number,
             answer: String,
             files: [String],
           },
