@@ -14,6 +14,8 @@ import { Cache } from 'cache-manager'
 
 import { customAlphabet } from 'nanoid'
 
+import { stringify } from 'csv-stringify/sync'
+
 import { Apply, CurrentStatus } from 'src/common/repository/schema/apply.schema'
 import { PassSession } from 'src/common/repository/schema/pass.schema'
 
@@ -27,6 +29,7 @@ import ApplicationStatusMutateRequestDto, {
 } from './dto/request/application-status-mutate.request.dto'
 import ApplicationStatusRetrieveRequestDto from './dto/request/application-status-retrieve.request.dto'
 import RegisterCiDiRequestDto from './dto/request/register-cidi.request.dto'
+import ApplicationExportExcelRequestDto from './dto/request/application-export-excel.request.dto'
 
 const KCP_API_CONSTANTS = {
   SITECD: process.env.NODE_ENV === 'development' ? 'AO0QE' : 'AKYT9',
@@ -100,7 +103,7 @@ export class ApplyService {
     // )
 
     const alreadyApplied = await this.applyModel.findOne({
-      student: { id: userInfo.id },
+      'student.id': userInfo.id,
     })
 
     if (alreadyApplied) {
@@ -241,7 +244,7 @@ export class ApplyService {
     const shouldMms = new TextEncoder().encode(content).length > 90
 
     const applications = await this.applyModel.find({
-      student: { id: { $in: ids } },
+      'student.id': { $in: ids },
       answers: { $elemMatch: { club } },
     })
 
@@ -304,6 +307,29 @@ export class ApplyService {
         .find((a) => a.club === club)
         .answers.sort((a, b) => a.id - b.id),
     }
+  }
+
+  async downloadExcel(club: string, body: ApplicationExportExcelRequestDto) {
+    const { ids } = body
+
+    const applications = await this.applyModel.find({
+      'student.id': { $in: ids },
+      answers: { $elemMatch: { club } },
+    })
+
+    const csv = stringify(
+      [
+        ['id', 'name', 'phone'],
+        ...applications.map((application) => [
+          application.student.id.toString(),
+          application.student.name.toString(),
+          application.student.phone.toString(),
+        ]),
+      ],
+      { bom: true },
+    )
+
+    return Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(csv)])
   }
 
   async retrieveApplicationForStudent(

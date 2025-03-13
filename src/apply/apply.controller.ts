@@ -34,6 +34,8 @@ import {
   SendNotificationRequestDto,
 } from './dto/request/send-notification.request.dto'
 
+import ApplicationExportExcelRequestDto from './dto/request/application-export-excel.request.dto'
+
 import { ApplyService } from './apply.service'
 
 import { AuthGuard } from 'src/auth/auth.guard'
@@ -225,6 +227,33 @@ export class ApplyController {
     }
 
     return await this.applyService.retrieveApplication(id, club)
+  }
+
+  @Post(':club/excel')
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary: '(ADMIN) 지원서 엑셀 다운로드',
+    description: '지원서 기본 정보를 엑셀로 다운로드합니다.',
+  })
+  @ApiBearerAuth()
+  async downloadExcel(
+    @Param('club') club: string,
+    @Body() body: ApplicationExportExcelRequestDto,
+    @Res() res: FastifyReply,
+  ) {
+    if (!this.rolesService.canActivate([club])) {
+      throw new APIException(HttpStatus.FORBIDDEN, '권한이 없습니다.')
+    }
+
+    const buffer = await this.applyService.downloadExcel(club, body)
+
+    res.header('Content-Type', 'text/csv;charset=utf-8')
+    res.header(
+      'Content-Disposition',
+      `attachment; filename=purplebook_${club}.csv`,
+    )
+
+    res.send(buffer)
   }
 
   @Patch(':club/:id')
