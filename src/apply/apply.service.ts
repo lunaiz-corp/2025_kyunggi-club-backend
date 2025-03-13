@@ -164,6 +164,11 @@ export class ApplyService {
               resendSendNo: process.env.KAKAO_SENDER_PHONE,
             },
           },
+          {
+            headers: {
+              'X-Secret-Key': process.env.KAKAO_SECRET_KEY,
+            },
+          },
         )
         .pipe(
           catchError((error: AxiosError) => {
@@ -251,7 +256,7 @@ export class ApplyService {
     const { data: messaging } = await firstValueFrom(
       this.httpService
         .post(
-          `https://api-sms.cloud.toast.com/sms/v3.0/appkeys/${process.env.KAKAO_APP_KEY}/sender/${shouldMms ? 'mms' : 'sms'}`,
+          `https://api-sms.cloud.toast.com/sms/v3.0/appkeys/${process.env.SMS_APP_KEY}/sender/${shouldMms ? 'mms' : 'sms'}`,
           {
             title: shouldMms ? '[이공계동아리연합]' : undefined,
             body: content,
@@ -260,6 +265,11 @@ export class ApplyService {
             recipientList: applications.map((application) => ({
               recipientNo: application.student.phone,
             })),
+          },
+          {
+            headers: {
+              'X-Secret-Key': process.env.SMS_SECRET_KEY,
+            },
           },
         )
         .pipe(
