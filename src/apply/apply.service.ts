@@ -395,7 +395,7 @@ export class ApplyService {
       password: body.password,
     })
 
-    if (application) {
+    if (!application) {
       throw new APIException(
         HttpStatus.NOT_FOUND,
         '존재하지 않는 지원서입니다.',
