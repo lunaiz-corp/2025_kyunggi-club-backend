@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { MongooseModule } from '@nestjs/mongoose'
 import { CacheModule } from '@nestjs/cache-manager'
 
-import KeyvRedis from '@keyv/redis'
+import KeyvRedis, { createCluster } from '@keyv/redis'
 
 import { AppController } from './app.controller'
 
@@ -15,6 +15,7 @@ import { ApplyModule } from './apply/apply.module'
 import { ScheduleModule } from './schedule/schedule.module'
 import { CdnModule } from './cdn/cdn.module'
 import { NoticeModule } from './notice/notice.module'
+import { create } from 'node:domain'
 
 @Module({
   imports: [
@@ -30,9 +31,22 @@ import { NoticeModule } from './notice/notice.module'
     }),
     process.env.ENABLE_REDIS === '1'
       ? CacheModule.registerAsync({
-          useFactory: async (configService: ConfigService) => ({
-            stores: [new KeyvRedis(configService.getOrThrow('REDIS_URI'))],
-          }),
+          useFactory: async (configService: ConfigService) => {
+            const redisUris = (
+              configService.getOrThrow('REDIS_URIS') as string
+            ).split(',')
+
+            const redisConfig =
+              redisUris.length > 1
+                ? createCluster({
+                    rootNodes: redisUris.map((e) => ({ url: e })),
+                  })
+                : redisUris.join('')
+
+            return {
+              stores: [new KeyvRedis(redisConfig)],
+            }
+          },
           inject: [ConfigService],
           isGlobal: true,
         })
