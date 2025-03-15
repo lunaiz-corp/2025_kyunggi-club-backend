@@ -73,7 +73,10 @@ export class NoticeService {
   async createNotice(board: string, data: NoticeMutateRequestDto) {
     await this.cacheManager.del(`notice:${board}`)
 
-    const count = await this.noticeModel.countDocuments()
+    // 가장 최근의 공지사항 ID + 1을 id값으로
+    const previous = await this.noticeModel.findOne().sort('-id').exec()
+    const count = previous ? previous.id : 0
+
     await this.noticeModel.create({
       id: count + 1,
       category:
