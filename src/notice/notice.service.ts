@@ -37,7 +37,7 @@ export class NoticeService {
         category:
           NoticeCategory[board.toUpperCase() as keyof typeof NoticeCategory],
       })
-      .select('-category -_id -__v')
+      .select('-category -content -_id -__v')
       .sort('-createdAt')
       .exec()
 
