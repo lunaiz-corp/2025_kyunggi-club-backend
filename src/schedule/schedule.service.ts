@@ -49,7 +49,7 @@ export class ScheduleService {
 
     return await this.scheduleModel
       .find({
-        category: type ? { $in: Array.from(allowedCategory) } : undefined,
+        category: { $in: Array.from(allowedCategory) },
       })
       .sort('-startAt')
       .exec()
